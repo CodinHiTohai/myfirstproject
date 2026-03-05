@@ -1,8 +1,5 @@
 -- Eye In Database Schema
 
-CREATE DATABASE IF NOT EXISTS eyein;
-USE eyein;
-
 -- Drivers Table
 CREATE TABLE IF NOT EXISTS drivers (
   id INT AUTO_INCREMENT PRIMARY KEY,
