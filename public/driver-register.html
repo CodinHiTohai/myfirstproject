@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Registration – Eye In</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <div class="split-layout">
+        <!-- Left: Branding -->
+        <div class="split-brand">
+            <div class="split-brand-content">
+                <div class="brand-icon">🚗</div>
+                <h1>Eye In</h1>
+                <p>Driver Portal — Join the platform, set your routes, and manage seats in real-time.</p>
+            </div>
+        </div>
+
+        <!-- Right: Registration Form -->
+        <div class="split-form">
+            <div class="form-wrapper">
+                <h2>Driver Registration</h2>
+                <p class="form-subtitle">Create your driver account</p>
+
+                <form id="registerForm" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label>👤 Full Name</label>
+                        <input type="text" class="form-control" id="nameInput" placeholder="Enter your full name"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📱 Mobile Number</label>
+                        <input type="tel" class="form-control" id="phoneInput"
+                            placeholder="Enter 10-digit mobile number" required>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label>🔢 Vehicle Number</label>
+                            <input type="text" class="form-control" id="vehicleNumInput" placeholder="e.g. RJ14 AB1234"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label>🚌 Vehicle Type</label>
+                            <select class="form-control" id="vehicleTypeInput" required
+                                style="background-color: var(--surface-light); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+                                <option value="auto">Auto</option>
+                                <option value="car">Car</option>
+                                <option value="van">Van</option>
+                                <option value="bus">Mini Bus / Bus</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>🔒 Password</label>
+                        <input type="password" class="form-control" id="passwordInput" placeholder="Create a password"
+                            required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="registerBtn">
+                        Register →
+                    </button>
+                </form>
+
+                <div style="text-align: center; margin-top: 24px;">
+                    <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 8px;">
+                        Already have an account? <a href="/driver-login.html"
+                            style="color: var(--primary); font-weight: 500; text-decoration: none;">Login here</a>
+                    </p>
+                    <a href="/" style="color: var(--text-muted); text-decoration: none; font-size: 0.85rem;">← Back to
+                        Home</a>
+                </div>
+
+                <div id="registerError"
+                    style="display: none; margin-top: 16px; padding: 12px; background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-sm); color: var(--danger); font-size: 0.85rem;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function handleRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('nameInput').value.trim();
+            const phone = document.getElementById('phoneInput').value.trim();
+            const vehicle_number = document.getElementById('vehicleNumInput').value.trim();
+            const vehicle_type = document.getElementById('vehicleTypeInput').value;
+            const password = document.getElementById('passwordInput').value;
+
+            const errorDiv = document.getElementById('registerError');
+            const btn = document.getElementById('registerBtn');
+
+            btn.textContent = 'Registering...';
+            btn.disabled = true;
+            errorDiv.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/auth/driver-register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, phone, password, vehicle_number, vehicle_type })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'Registration failed');
+                }
+
+                // Auto login after registration
+                localStorage.setItem('driverToken', data.token);
+                localStorage.setItem('driverData', JSON.stringify(data.driver));
+                window.location.href = '/driver-dashboard.html';
+
+            } catch (err) {
+                errorDiv.textContent = err.message;
+                errorDiv.style.display = 'block';
+                btn.textContent = 'Register →';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

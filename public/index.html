@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Eye In - Smart local transport visibility platform. See live seat availability, routes, and fares in real-time.">
+  <title>Eye In – See Your Ride Before You Board</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div class="bg-animate"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="/" class="navbar-brand">
+      <div class="logo-icon">👁️</div>
+      <span class="logo-text">Eye In</span>
+    </a>
+    <div class="navbar-links">
+      <a href="/driver-login.html">🚗 Driver</a>
+      <a href="/admin-login.html">⚙️ Admin</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">🚀 Smart Transport Visibility</div>
+      <h1>
+        See Your Ride<br>
+        <span class="gradient-text">Before You Board</span>
+      </h1>
+      <p>Check live seat availability, routes, and fares of local transport around you. No more waiting in the dark.</p>
+
+      <!-- Search Box -->
+      <div class="search-box" id="searchBox">
+        <div class="form-group">
+          <div class="autocomplete-wrapper">
+            <div class="input-icon-wrap">
+              <span class="icon" id="autoLocateBtn" onclick="fetchUserLocation()"
+                style="cursor: pointer; z-index: 10; transition: transform 0.2s;"
+                title="Tap to detect Live Location">📍</span>
+              <input type="text" class="form-control" id="pickupInput" placeholder="Enter pickup location..." value=""
+                autocomplete="off" style="padding-left: 44px;">
+            </div>
+            <div class="autocomplete-suggestions" id="pickupSuggestions"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="autocomplete-wrapper">
+            <div class="input-icon-wrap">
+              <span class="icon">🎯</span>
+              <input type="text" class="form-control" id="destinationInput" placeholder="Enter destination..." value=""
+                autocomplete="off">
+            </div>
+            <div class="autocomplete-suggestions" id="destinationSuggestions"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" id="searchBtn" onclick="searchRoute()">
+          🔍 Search Route
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section style="padding: 80px 40px; max-width: 1000px; margin: 0 auto;">
+    <div style="text-align: center; margin-bottom: 48px;">
+      <h2 style="font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; margin-bottom: 12px;">How <span
+          class="gradient-text">Eye In</span> Works</h2>
+      <p style="color: var(--text-muted); font-size: 1rem;">Simple 3-step process to find your ride</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
+      <div class="glass-card" style="text-align: center;">
+        <div style="font-size: 2.5rem; margin-bottom: 16px;">🔍</div>
+        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">Search Route</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">Enter your pickup and destination to find available
+          transport.</p>
+      </div>
+      <div class="glass-card" style="text-align: center;">
+        <div style="font-size: 2.5rem; margin-bottom: 16px;">🗺️</div>
+        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">View on Map</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">See vehicles on a live map with their exact
+          locations.</p>
+      </div>
+      <div class="glass-card" style="text-align: center;">
+        <div style="font-size: 2.5rem; margin-bottom: 16px;">💺</div>
+        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">Check Seats</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">Click any vehicle to see real-time seat
+          availability.</p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    function searchRoute() {
+      const pickup = document.getElementById('pickupInput').value.trim();
+      const destination = document.getElementById('destinationInput').value.trim();
+
+      if (!pickup || !destination) {
+        showToast('Please enter both pickup and destination', 'error');
+        return;
+      }
+
+      window.location.href = `/results.html?pickup=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(destination)}`;
+    }
+
+    // Enter key support
+    document.getElementById('pickupInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('destinationInput').focus(); });
+    document.getElementById('destinationInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') searchRoute(); });
+
+    function showToast(msg, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Autocomplete Logic
+    function setupAutocomplete(inputId, suggestionsId) {
+      const input = document.getElementById(inputId);
+      const suggestionsBox = document.getElementById(suggestionsId);
+      let timeout = null;
+
+      input.addEventListener('input', (e) => {
+        clearTimeout(timeout);
+        const query = e.target.value.trim();
+
+        if (query.length < 3) {
+          suggestionsBox.style.display = 'none';
+          return;
+        }
+
+        timeout = setTimeout(async () => {
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=5`);
+            const data = await res.json();
+
+            if (data.length > 0) {
+              suggestionsBox.innerHTML = data.map(place => {
+                const name = place.display_name.split(',').slice(0, 3).join(','); // Keep it concise
+                return `<div class="suggestion-item" data-name="${name}">${name}</div>`;
+              }).join('');
+              suggestionsBox.style.display = 'block';
+
+              // Attach click listeners to new items
+              const items = suggestionsBox.querySelectorAll('.suggestion-item');
+              items.forEach(item => {
+                item.addEventListener('click', () => {
+                  input.value = item.getAttribute('data-name');
+                  suggestionsBox.style.display = 'none';
+                });
+              });
+            } else {
+              suggestionsBox.style.display = 'none';
+            }
+          } catch (err) {
+            console.error("Autocomplete error:", err);
+          }
+        }, 400); // 400ms debounce
+      });
+
+      // Hide suggestions when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !suggestionsBox.contains(e.target)) {
+          suggestionsBox.style.display = 'none';
+        }
+      });
+    }
+
+    setupAutocomplete('pickupInput', 'pickupSuggestions');
+    setupAutocomplete('destinationInput', 'destinationSuggestions');
+
+    // Automatically Detect User's Live Location
+    const fetchUserLocation = () => {
+      const pickupInput = document.getElementById('pickupInput');
+      if (navigator.geolocation) {
+        pickupInput.placeholder = "Detecting location...";
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            try {
+              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+              const data = await res.json();
+              const placeName = data.name || data.address.suburb || data.address.city || data.address.state || "Current Location";
+
+              if (pickupInput) {
+                pickupInput.value = placeName;
+                pickupInput.placeholder = "Enter pickup location...";
+                showToast("📍 Live location detected!", "success");
+              }
+            } catch (err) {
+              console.error("Reverse geocoding failed", err);
+              pickupInput.placeholder = "Enter pickup location...";
+            }
+          },
+          (err) => {
+            console.log("User denied location or timeout", err.message, err.code);
+            pickupInput.placeholder = "Enter pickup location...";
+
+            // Only show toast if it's not a permission denial (code 1)
+            // Timeout is code 3, Position unavailable is code 2
+            if (err.code !== 1) {
+              showToast("Could not detect location automatically. Try again.", "error");
+            }
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      } else {
+        showToast("Geolocation is not supported by your browser.", "error");
+      }
+    };
+
+    window.onload = fetchUserLocation;
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard – Eye In</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <div class="bg-animate"></div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">
+            <div class="logo-icon">👁️</div>
+            <span class="logo-text">Eye In</span>
+        </a>
+        <div class="navbar-links">
+            <span style="color: var(--text-muted); font-size: 0.85rem;">⚙️ Admin Panel</span>
+            <a href="#" onclick="adminLogout()" style="color: var(--danger);">Logout</a>
+        </div>
+    </nav>
+
+    <!-- Dashboard -->
+    <div class="dashboard">
+        <div class="dashboard-content">
+            <div class="dashboard-header">
+                <h1>⚙️ Admin Dashboard</h1>
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Auto-refresh: 30s</span>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid" id="adminStats">
+                <div class="stat-card">
+                    <div class="stat-icon purple">📍</div>
+                    <div class="stat-value" id="statActiveRoutes">–</div>
+                    <div class="stat-label">Active Routes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon blue">👨‍✈️</div>
+                    <div class="stat-value" id="statTotalDrivers">–</div>
+                    <div class="stat-label">Total Drivers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">🚗</div>
+                    <div class="stat-value" id="statActiveVehicles">–</div>
+                    <div class="stat-label">Active Vehicles</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">🚐</div>
+                    <div class="stat-value" id="statTotalVehicles">–</div>
+                    <div class="stat-label">Total Vehicles</div>
+                </div>
+            </div>
+
+            <!-- Active Routes Table -->
+            <div class="data-table-wrap" style="margin-bottom: 24px;">
+                <h3>📍 Active Routes</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Driver</th>
+                            <th>Vehicle</th>
+                            <th>Route</th>
+                            <th>Fare</th>
+                            <th>Seats</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="routesTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align:center; padding: 40px;">
+                                <div class="spinner" style="margin: 0 auto;"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Drivers Table -->
+            <div class="data-table-wrap">
+                <h3>👨‍✈️ Registered Drivers</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Vehicle Number</th>
+                            <th>Vehicle Type</th>
+                        </tr>
+                    </thead>
+                    <tbody id="driversTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align:center; padding: 40px;">
+                                <div class="spinner" style="margin: 0 auto;"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin.js"></script>
+</body>
+
+</html>

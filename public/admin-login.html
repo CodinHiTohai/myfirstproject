@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login – Eye In</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <div class="split-layout">
+        <!-- Left: Branding -->
+        <div class="split-brand">
+            <div class="split-brand-content">
+                <div class="brand-icon">⚙️</div>
+                <h1>Eye In</h1>
+                <p>Admin Panel — Monitor routes, drivers, and system health.</p>
+            </div>
+        </div>
+
+        <!-- Right: Login Form -->
+        <div class="split-form">
+            <div class="form-wrapper">
+                <h2>Admin Login</h2>
+                <p class="form-subtitle">Access the admin dashboard</p>
+
+                <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+                    <div class="form-group">
+                        <label>👤 Username</label>
+                        <input type="text" class="form-control" id="usernameInput" placeholder="Enter username"
+                            value="admin" required>
+                    </div>
+                    <div class="form-group">
+                        <label>🔒 Password</label>
+                        <input type="password" class="form-control" id="passwordInput" placeholder="Enter password"
+                            value="admin123" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="adminLoginBtn">
+                        Sign In →
+                    </button>
+                </form>
+
+                <div style="text-align: center; margin-top: 24px;">
+                    <a href="/" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">← Back to
+                        Home</a>
+                </div>
+
+                <div id="adminLoginError"
+                    style="display: none; margin-top: 16px; padding: 12px; background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-sm); color: var(--danger); font-size: 0.85rem;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function handleAdminLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('usernameInput').value.trim();
+            const password = document.getElementById('passwordInput').value;
+            const errorDiv = document.getElementById('adminLoginError');
+            const btn = document.getElementById('adminLoginBtn');
+
+            btn.textContent = 'Signing in...';
+            btn.disabled = true;
+            errorDiv.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/auth/admin-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Login failed');
+
+                localStorage.setItem('adminToken', data.token);
+                window.location.href = '/admin-dashboard.html';
+
+            } catch (err) {
+                errorDiv.textContent = err.message;
+                errorDiv.style.display = 'block';
+                btn.textContent = 'Sign In →';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

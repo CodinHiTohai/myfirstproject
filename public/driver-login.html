@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Login – Eye In</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <div class="split-layout">
+        <!-- Left: Branding -->
+        <div class="split-brand">
+            <div class="split-brand-content">
+                <div class="brand-icon">🚗</div>
+                <h1>Eye In</h1>
+                <p>Driver Portal — Set your route, fare, and manage seats in real-time.</p>
+            </div>
+        </div>
+
+        <!-- Right: Login Form -->
+        <div class="split-form">
+            <div class="form-wrapper">
+                <h2>Driver Login</h2>
+                <p class="form-subtitle">Sign in to your driver account</p>
+
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label>📱 Mobile Number</label>
+                        <input type="tel" class="form-control" id="phoneInput" placeholder="Enter mobile number"
+                            value="9876543210" required>
+                    </div>
+                    <div class="form-group">
+                        <label>🔒 Password</label>
+                        <input type="password" class="form-control" id="passwordInput" placeholder="Enter password"
+                            value="driver123" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginBtn">
+                        Sign In →
+                    </button>
+                </form>
+
+                <div style="text-align: center; margin-top: 24px;">
+                    <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 8px;">
+                        Don't have an account? <a href="/driver-register.html"
+                            style="color: var(--primary); font-weight: 500; text-decoration: none;">Register here</a>
+                    </p>
+                    <a href="/" style="color: var(--text-muted); text-decoration: none; font-size: 0.85rem;">← Back to
+                        Home</a>
+                </div>
+
+                <div id="loginError"
+                    style="display: none; margin-top: 16px; padding: 12px; background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-sm); color: var(--danger); font-size: 0.85rem;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function handleLogin(e) {
+            e.preventDefault();
+            const phone = document.getElementById('phoneInput').value.trim();
+            const password = document.getElementById('passwordInput').value;
+            const errorDiv = document.getElementById('loginError');
+            const btn = document.getElementById('loginBtn');
+
+            btn.textContent = 'Signing in...';
+            btn.disabled = true;
+            errorDiv.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/auth/driver-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'Login failed');
+                }
+
+                localStorage.setItem('driverToken', data.token);
+                localStorage.setItem('driverData', JSON.stringify(data.driver));
+                window.location.href = '/driver-dashboard.html';
+
+            } catch (err) {
+                errorDiv.textContent = err.message;
+                errorDiv.style.display = 'block';
+                btn.textContent = 'Sign In →';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route Results – Eye In</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .leaflet-popup-tip {
+            background: var(--bg-secondary);
+        }
+
+        .leaflet-popup-content {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+        }
+
+        .map-popup-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .map-popup-info {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .vehicle-marker {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .vehicle-marker:hover {
+            transform: scale(1.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-animate"></div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">
+            <div class="logo-icon">👁️</div>
+            <span class="logo-text">Eye In</span>
+        </a>
+        <div class="navbar-links">
+            <a href="/">🏠 Home</a>
+            <a href="/driver-login.html">🚗 Driver</a>
+        </div>
+    </nav>
+
+    <!-- Results Layout -->
+    <div class="results-layout">
+        <!-- Left: Vehicle List -->
+        <div class="vehicle-list-panel">
+            <h2>🚗 Available Vehicles</h2>
+            <p class="subtitle" id="routeInfo">Searching...</p>
+            <div id="vehicleList">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <!-- Right: Map -->
+        <div class="map-panel">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <!-- Vehicle Detail Modal -->
+    <div class="modal-overlay" id="vehicleModal" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/user.js"></script>
+</body>
+
+</html>

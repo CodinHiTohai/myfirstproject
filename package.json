@@ -1,0 +1,28 @@
+{
+    "name": "eye-in",
+    "version": "1.0.0",
+    "description": "Eye In - Transport Visibility Platform",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node server.js",
+        "proxy": "local-ssl-proxy --source 3001 --target 3000"
+    },
+    "dependencies": {
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.19.2",
+        "jsonwebtoken": "^9.0.2",
+        "mysql2": "^3.18.2",
+        "nodemon": "^3.1.14",
+        "socket.io": "^4.7.5"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "devDependencies": {
+        "local-ssl-proxy": "^2.0.5"
+    }
+}
