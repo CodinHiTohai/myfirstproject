@@ -22,9 +22,13 @@ const pool = mysql.createPool({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || 'govind',
     database: process.env.DB_NAME || 'eyein',
+    port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    ssl: {
+        rejectUnauthorized: false // Required for Aiven/Cloud DBs
+    }
 });
 
 // Test connection
