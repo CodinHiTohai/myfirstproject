@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS routes (
   driver_id INT NOT NULL,
   start_location VARCHAR(200) NOT NULL,
   end_location VARCHAR(200) NOT NULL,
+  stops VARCHAR(500) DEFAULT NULL,
   fare DECIMAL(10,2) NOT NULL,
   total_seats INT NOT NULL,
   filled_seats INT NOT NULL DEFAULT 0,
@@ -45,7 +46,7 @@ INSERT IGNORE INTO drivers (name, phone, password, vehicle_number, vehicle_type)
 ('Vikram Singh', '9876543212', '$2a$10$xPBm5JBqPJYfVfVlWQ7QXOzKz0Hk5VxGqKgE8mJOyRcNqW1TJgXbG', 'RJ14 EF8901', 'car');
 
 -- Seed Data: Active Routes
-INSERT IGNORE INTO routes (driver_id, start_location, end_location, fare, total_seats, filled_seats, current_lat, current_lng, status) VALUES
-(1, 'Mithapur', 'Kota Junction', 40, 3, 2, 25.1800, 75.8500, 'active'),
-(2, 'Mithapur', 'Dadabari', 25, 40, 12, 25.1750, 75.8450, 'active'),
-(3, 'Kota Junction', 'Mithapur', 60, 4, 1, 25.1850, 75.8550, 'active');
+INSERT IGNORE INTO routes (driver_id, start_location, end_location, stops, fare, total_seats, filled_seats, current_lat, current_lng, status) VALUES
+(1, 'Mithapur', 'Kota Junction', 'Bus Stand, Chhatrapura', 40, 3, 2, 25.1800, 75.8500, 'active'),
+(2, 'Mithapur', 'Dadabari', 'Talwandi', 25, 40, 12, 25.1750, 75.8450, 'active'),
+(3, 'Kota Junction', 'Mithapur', NULL, 60, 4, 1, 25.1850, 75.8550, 'active');

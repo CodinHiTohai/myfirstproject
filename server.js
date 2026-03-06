@@ -33,8 +33,16 @@ const pool = mysql.createPool({
 
 // Test connection
 pool.getConnection()
-    .then(conn => {
+    .then(async conn => {
         console.log('✅ Connected to MySQL Database');
+        try {
+            await conn.query('ALTER TABLE routes ADD COLUMN stops VARCHAR(500) DEFAULT NULL');
+            console.log('✅ Schema migrated: stops column added');
+        } catch (err) {
+            if (err.code !== 'ER_DUP_FIELDNAME') {
+                console.log('Schema migration notice:', err.message);
+            }
+        }
         conn.release();
     })
     .catch(err => {
@@ -66,14 +74,16 @@ io.on('connection', (socket) => {
 
     // User requests a ride
     socket.on('request-ride', (data) => {
-        // data = { routeId, userId, name, phone }
-        const { routeId, name, phone } = data;
-        console.log(`Ride requested for route ${routeId} by ${name}`);
+        // data = { routeId, userId, name, phone, passengers, seats }
+        const { routeId, name, phone, passengers, seats } = data;
+        console.log(`Ride requested for route ${routeId} by ${name} — ${passengers} log, ${seats} seats`);
         // Relay to driver
         io.to(`driver_${routeId}`).emit('incoming-ride-request', {
-            userId: socket.id, // we use user's socket id to reply back directly
+            userId: socket.id,
             name,
             phone,
+            passengers,
+            seats,
             routeId
         });
     });

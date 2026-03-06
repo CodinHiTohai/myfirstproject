@@ -18,8 +18,8 @@ router.get('/search', async (req, res) => {
             FROM routes r
             JOIN drivers d ON r.driver_id = d.id
             WHERE r.status = 'active'
-              AND LOWER(r.start_location) LIKE LOWER(?)
-              AND LOWER(r.end_location) LIKE LOWER(?)
+              AND LOWER(CONCAT(r.start_location, ', ', IFNULL(r.stops, ''), ', ', r.end_location)) LIKE LOWER(?)
+              AND LOWER(CONCAT(r.start_location, ', ', IFNULL(r.stops, ''), ', ', r.end_location)) LIKE LOWER(?)
         `;
 
         const [results] = await db.query(query, [`%${pickup}%`, `%${destination}%`]);
@@ -58,7 +58,7 @@ router.get('/:id', async (req, res) => {
 
 // Driver creates/goes live with route
 router.post('/', authenticateToken, async (req, res) => {
-    const { start_location, end_location, fare, total_seats, lat, lng } = req.body;
+    const { start_location, end_location, stops, fare, total_seats, lat, lng } = req.body;
     const db = req.app.get('db');
 
     if (!start_location || !end_location || !fare || !total_seats) {
@@ -77,9 +77,9 @@ router.post('/', authenticateToken, async (req, res) => {
             const existingId = existingRoutes[0].id;
             await db.query(
                 `UPDATE routes 
-                 SET start_location = ?, end_location = ?, fare = ?, total_seats = ?, filled_seats = 0, current_lat = COALESCE(?, current_lat), current_lng = COALESCE(?, current_lng)
+                 SET start_location = ?, end_location = ?, stops = ?, fare = ?, total_seats = ?, filled_seats = 0, current_lat = COALESCE(?, current_lat), current_lng = COALESCE(?, current_lng)
                  WHERE id = ?`,
-                [start_location, end_location, parseFloat(fare), parseInt(total_seats), lat, lng, existingId]
+                [start_location, end_location, stops || null, parseFloat(fare), parseInt(total_seats), lat, lng, existingId]
             );
 
             // Fetch updated record
@@ -92,9 +92,9 @@ router.post('/', authenticateToken, async (req, res) => {
 
         // Insert new route
         const [result] = await db.query(
-            `INSERT INTO routes (driver_id, start_location, end_location, fare, total_seats, current_lat, current_lng, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
-            [req.user.id, start_location, end_location, parseFloat(fare), parseInt(total_seats), lat || 25.0961, lng || 85.3131]
+            `INSERT INTO routes (driver_id, start_location, end_location, stops, fare, total_seats, current_lat, current_lng, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+            [req.user.id, start_location, end_location, stops || null, parseFloat(fare), parseInt(total_seats), lat || 25.0961, lng || 85.3131]
         );
 
         const [[newRoute]] = await db.query('SELECT * FROM routes WHERE id = ?', [result.insertId]);
@@ -127,13 +127,14 @@ router.patch('/:id/seats', authenticateToken, async (req, res) => {
             return res.status(403).json({ error: 'Unauthorized.' });
         }
 
-        const { action } = req.body; // 'fill' or 'empty'
+        const { action, count } = req.body; // 'fill' or 'empty', optional count (default 1)
+        const seatChange = count ? parseInt(count) : 1;
         let newFilledSeats = route.filled_seats;
 
-        if (action === 'fill' && newFilledSeats < route.total_seats) {
-            newFilledSeats++;
-        } else if (action === 'empty' && newFilledSeats > 0) {
-            newFilledSeats--;
+        if (action === 'fill' && (newFilledSeats + seatChange) <= route.total_seats) {
+            newFilledSeats += seatChange;
+        } else if (action === 'empty' && (newFilledSeats - seatChange) >= 0) {
+            newFilledSeats -= seatChange;
         } else {
             return res.status(400).json({ error: 'Invalid action or seat limit reached.' });
         }

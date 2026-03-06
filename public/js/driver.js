@@ -130,12 +130,18 @@ async function goLive(e) {
 
     const start_location = document.getElementById('startLocation').value.trim();
     const end_location = document.getElementById('endLocation').value.trim();
+    const stops = document.getElementById('stopsInput').value.trim(); // Added stops
     const fare = document.getElementById('fareInput').value;
     const total_seats = document.getElementById('seatsInput').value;
 
     // Use clicked map coords if they exist, otherwise fallback
     const startLat = selectedStartCoords ? selectedStartCoords.lat : null;
     const startLng = selectedStartCoords ? selectedStartCoords.lng : null;
+
+    if (!selectedStartCoords) { // Check if start coords are available
+        showToast("Map is still loading location, please wait a second.", "warning");
+        return;
+    }
 
     const btn = document.getElementById('goLiveBtn');
     btn.textContent = 'Going Live...';
@@ -151,8 +157,9 @@ async function goLive(e) {
             body: JSON.stringify({
                 start_location,
                 end_location,
+                stops, // Added stops
                 fare,
-                total_seats,
+                total_seats, // Renamed to total_seats for consistency with backend
                 lat: startLat,
                 lng: startLng
             })
@@ -198,6 +205,7 @@ function activateLiveMode() {
     document.getElementById('endLocation').value = currentRoute.end_location;
     document.getElementById('fareInput').value = currentRoute.fare;
     document.getElementById('seatsInput').value = currentRoute.total_seats;
+    document.getElementById('stopsInput').value = currentRoute.stops || ''; // Fill stops if available
 
     // Render seat grid
     renderDriverSeatGrid();
@@ -381,32 +389,56 @@ function toggleSimulation() {
 }
 
 // ─── Ride Requests ───────────────────────────────────────────
-function respondToRide(isAccepted) {
-    if (!currentRequest || !currentRoute) return;
+async function respondToRide(accepted) {
+    clearTimeout(requestTimeout);
 
-    document.getElementById('rideRequestModal').style.display = 'none';
+    if (!currentRequest || !currentRoute) return; // Use currentRequest and currentRoute
 
-    if (isAccepted) {
+    document.getElementById('rideRequestModal').style.display = 'none'; // Hide modal here
+
+    if (accepted) {
         socket.emit('accept-ride', {
             userId: currentRequest.userId,
-            routeId: currentRoute.id,
+            routeId: currentRoute.id, // Use currentRoute.id
             driverName: driverData.name,
             vehicleNumber: driverData.vehicle_number
         });
-        showToast(`✅ You accepted a ride for ${currentRequest.name}`, 'success');
-        // Auto-fill a seat if possible
-        if (currentRoute.filled_seats < currentRoute.total_seats) {
-            updateSeat('fill');
+
+        // Automatically update the seats based on requested seats
+        try {
+            const res = await fetch(`/api/routes/${currentRoute.id}/seats`, { // Use currentRoute.id
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${driverAuthToken}` // Use driverAuthToken
+                },
+                body: JSON.stringify({ action: 'fill', count: currentRequest.seats }) // Use currentRequest.seats
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                currentRoute.filled_seats = data.filled_seats;
+                currentRoute.total_seats = data.total_seats;
+                updateStats();
+                renderDriverSeatGrid();
+                showToast(`✅ Accepted ride. Filled ${currentRequest.seats} seat(s).`, 'success');
+            } else {
+                showToast('Accepted ride, but could not update seats automatically.', 'warning');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Accepted ride, but an error occurred updating seats.', 'error');
         }
+
     } else {
         socket.emit('reject-ride', {
             userId: currentRequest.userId,
-            routeId: currentRoute.id
+            routeId: currentRoute.id // Use currentRoute.id
         });
         showToast(`❌ You rejected a ride for ${currentRequest.name}`, 'info');
     }
 
-    currentRequest = null;
+    currentRequest = null; // Clear current request after responding
 }
 
 // ─── Update Stats ────────────────────────────────────────────
@@ -452,7 +484,7 @@ function renderDriverSeatGrid() {
 }
 
 // ─── Update Seat ─────────────────────────────────────────────
-async function updateSeat(action) {
+async function updateSeat(action, count = 1) { // Added count parameter
     if (!currentRoute) return;
 
     try {
@@ -462,7 +494,7 @@ async function updateSeat(action) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${driverAuthToken}`
             },
-            body: JSON.stringify({ action })
+            body: JSON.stringify({ action, count }) // Pass count to backend
         });
 
         const data = await res.json();
@@ -475,7 +507,7 @@ async function updateSeat(action) {
         renderDriverSeatGrid();
 
         const emoji = action === 'fill' ? '🔴' : '🟢';
-        showToast(`${emoji} Seat ${action === 'fill' ? 'filled' : 'emptied'} — ${data.empty_seats} seats available`, 'success');
+        showToast(`${emoji} ${count} Seat(s) ${action === 'fill' ? 'filled' : 'emptied'} — ${data.empty_seats} seats available`, 'success');
 
     } catch (err) {
         showToast(err.message, 'error');
@@ -556,33 +588,63 @@ function showToast(msg, type = 'info') {
     setTimeout(() => toast.remove(), 3500);
 }
 
+// Incoming ride request from user
 socket.on('incoming-ride-request', (data) => {
-    currentRequest = data;
-    document.getElementById('requestName').textContent = data.name;
-    document.getElementById('requestPhone').textContent = data.phone;
-    document.getElementById('rideRequestModal').style.display = 'flex';
+    if (currentRoute && data.routeId === currentRoute.id) {
+        currentRequest = data;
 
-    // Plot User Marker
-    if (data.userLat && data.userLng && driverMap) {
-        if (userMarkers[data.userId]) {
-            driverMap.removeLayer(userMarkers[data.userId]);
+        const availableSeats = currentRoute.total_seats - currentRoute.filled_seats;
+        const passengers = data.passengers || data.seats; // fallback if old client
+
+        document.getElementById('requestName').innerText = data.name;
+        document.getElementById('requestPhone').innerText = data.phone;
+        document.getElementById('requestPassengers').innerText = passengers;
+        document.getElementById('requestSeatsBadge').innerText = data.seats;
+        document.getElementById('availableSeatsInfo').innerText =
+            `✅ Aapki gaadi mein abhi ${availableSeats} seat(s) available hain`;
+
+        // Warn if not enough seats
+        if (data.seats > availableSeats) {
+            document.getElementById('availableSeatsInfo').style.background = 'rgba(239,68,68,0.1)';
+            document.getElementById('availableSeatsInfo').style.borderColor = 'var(--danger)';
+            document.getElementById('availableSeatsInfo').style.color = 'var(--danger)';
+            document.getElementById('availableSeatsInfo').innerText =
+                `⚠️ Sirf ${availableSeats} seat available hai, par ${data.seats} maangi gayi!`;
+        } else {
+            document.getElementById('availableSeatsInfo').style.background = 'rgba(16,185,129,0.1)';
+            document.getElementById('availableSeatsInfo').style.borderColor = 'var(--success)';
+            document.getElementById('availableSeatsInfo').style.color = 'var(--success)';
         }
 
-        const userIcon = L.divIcon({
-            className: 'custom-user-marker',
-            html: `<div style="font-size: 28px; filter: hue-rotate(200deg);">🧍‍♂️</div>`,
-            iconSize: [30, 30],
-            iconAnchor: [15, 30]
-        });
+        document.getElementById('rideRequestModal').style.display = 'flex';
 
-        userMarkers[data.userId] = L.marker([data.userLat, data.userLng], { icon: userIcon })
-            .addTo(driverMap)
-            .bindPopup(`Requested by: ${data.name}`).openPopup();
+        // Auto dismiss after 20 seconds
+        requestTimeout = setTimeout(() => {
+            respondToRide(false);
+        }, 20000);
 
-        // Fit bounds
-        if (driverMarker) {
-            const bounds = L.latLngBounds([driverMarker.getLatLng(), [data.userLat, data.userLng]]);
-            driverMap.fitBounds(bounds, { padding: [50, 50] });
+        // Plot User Marker
+        if (data.userLat && data.userLng && driverMap) {
+            if (userMarkers[data.userId]) {
+                driverMap.removeLayer(userMarkers[data.userId]);
+            }
+
+            const userIcon = L.divIcon({
+                className: 'custom-user-marker',
+                html: `<div style="font-size: 28px; filter: hue-rotate(200deg);">🧍‍♂️</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            });
+
+            userMarkers[data.userId] = L.marker([data.userLat, data.userLng], { icon: userIcon })
+                .addTo(driverMap)
+                .bindPopup(`Requested by: ${data.name}`).openPopup();
+
+            // Fit bounds
+            if (driverMarker) {
+                const bounds = L.latLngBounds([driverMarker.getLatLng(), [data.userLat, data.userLng]]);
+                driverMap.fitBounds(bounds, { padding: [50, 50] });
+            }
         }
     }
 });

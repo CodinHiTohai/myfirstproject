@@ -256,11 +256,30 @@ function showVehicleDetail(routeId) {
 
     <!-- Request Ride Section -->
     <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-      <h3 style="margin-bottom: 12px; font-size: 1.1rem;">📝 Request a Ride</h3>
+      <h3 style="margin-bottom: 12px; font-size: 1.1rem;">📝 Ride Request</h3>
       <div id="requestFormWrapper-${vehicle.id}">
-        <input type="text" id="passengerName" placeholder="Your Name (e.g. Rohan)" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary);" />
-        <input type="tel" id="passengerPhone" placeholder="Mobile Number" style="width: 100%; padding: 10px; margin-bottom: 16px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary);" />
-        <button class="btn btn-primary" style="width: 100%;" onclick="submitRideRequest(${vehicle.id})" id="requestBtn-${vehicle.id}">Send Request</button>
+        <input type="text" id="passengerName" placeholder="Aapka Naam (e.g. Rohan)" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary);" />
+        <input type="tel" id="passengerPhone" placeholder="Mobile Number" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary);" />
+
+        <!-- Passenger Count -->
+        <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">👥 Aap kitne log hain?</label>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+          <button type="button" onclick="changePassengers(-1, ${vehicle.id})" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">−</button>
+          <span id="passengerCount-${vehicle.id}" style="font-size: 1.5rem; font-weight: 700; min-width: 32px; text-align: center;">1</span>
+          <button type="button" onclick="changePassengers(1, ${vehicle.id})" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">+</button>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">log (max ${emptySeats} seats available)</span>
+        </div>
+
+        <!-- Seats Needed -->
+        <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">💺 Kitni seats chahiye?</label>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+          <button type="button" onclick="changeSeats(-1, ${vehicle.id})" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">−</button>
+          <span id="requestedSeatsCount-${vehicle.id}" style="font-size: 1.5rem; font-weight: 700; min-width: 32px; text-align: center;">1</span>
+          <button type="button" onclick="changeSeats(1, ${vehicle.id})" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">+</button>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">seats (max ${emptySeats})</span>
+        </div>
+
+        <button class="btn btn-primary" style="width: 100%;" onclick="submitRideRequest(${vehicle.id}, ${emptySeats})" id="requestBtn-${vehicle.id}">🚗 Send Request to Driver</button>
       </div>
     </div>
   `;
@@ -268,17 +287,46 @@ function showVehicleDetail(routeId) {
   document.getElementById('vehicleModal').style.display = 'flex';
 }
 
-function submitRideRequest(routeId) {
+// ─── Passenger / Seat Counter Helpers ────────────────────────
+function changePassengers(delta, routeId) {
+  const el = document.getElementById(`passengerCount-${routeId}`);
+  let val = parseInt(el.textContent) + delta;
+  const maxSeats = parseInt(el.closest('div').querySelector('span:last-child').textContent);
+  if (val < 1) val = 1;
+  el.textContent = val;
+  // Auto-sync seat count if seats < passengers
+  const seatsEl = document.getElementById(`requestedSeatsCount-${routeId}`);
+  if (parseInt(seatsEl.textContent) < val) seatsEl.textContent = val;
+}
+
+function changeSeats(delta, routeId) {
+  const el = document.getElementById(`requestedSeatsCount-${routeId}`);
+  const passengersEl = document.getElementById(`passengerCount-${routeId}`);
+  let val = parseInt(el.textContent) + delta;
+  const passengers = parseInt(passengersEl.textContent);
+  // Can't book less seats than passengers
+  if (val < passengers) val = passengers;
+  el.textContent = val;
+}
+
+function submitRideRequest(routeId, maxSeats) {
   const name = document.getElementById('passengerName').value.trim();
   const phone = document.getElementById('passengerPhone').value.trim();
+  const passengers = parseInt(document.getElementById(`passengerCount-${routeId}`).textContent);
+  const seats = parseInt(document.getElementById(`requestedSeatsCount-${routeId}`).textContent);
 
   if (!name || !phone) {
-    alert("Please enter both your name and phone number.");
+    alert("Apna naam aur phone number zaroor bhare.");
+    return;
+  }
+
+  if (seats > maxSeats) {
+    alert(`Sirf ${maxSeats} seats available hain!`);
     return;
   }
 
   const btn = document.getElementById(`requestBtn-${routeId}`);
-  btn.innerText = 'Getting Location...';
+  btn.innerText = 'Location le raha hai...';
   btn.disabled = true;
   btn.style.opacity = '0.7';
 
@@ -287,16 +335,18 @@ function submitRideRequest(routeId) {
       routeId: routeId,
       name: name,
       phone: phone,
+      passengers: passengers,
+      seats: seats,
       userLat: lat,
       userLng: lng
     });
-    btn.innerText = 'Waiting for driver...';
+    btn.innerText = 'Driver ka wait kar raha hai...';
   };
 
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (pos) => sendRequest(pos.coords.latitude, pos.coords.longitude),
-      (err) => sendRequest(25.0961, 85.3131), // Fallback Bihar center
+      (err) => sendRequest(25.0961, 85.3131),
       { timeout: 5000 }
     );
   } else {
