@@ -9,6 +9,9 @@
         "proxy": "local-ssl-proxy --source 3001 --target 3000"
     },
     "dependencies": {
+        "@capacitor/android": "^8.2.0",
+        "@capacitor/cli": "^8.2.0",
+        "@capacitor/core": "^8.2.0",
         "bcryptjs": "^2.4.3",
         "cors": "^2.8.5",
         "dotenv": "^16.4.5",

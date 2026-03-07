@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Eye In</string>
+    <string name="title_activity_main">Eye In</string>
+    <string name="package_name">com.govind.eyein</string>
+    <string name="custom_url_scheme">com.govind.eyein</string>
+</resources>

@@ -38,6 +38,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     driverData = JSON.parse(stored);
     document.getElementById('driverInfo').textContent = `${driverData.name} • ${driverData.vehicle_number}`;
+    
+    // Display Rating
+    if (driverData.total_ratings > 0) {
+        const badge = document.getElementById('driverRatingBadge');
+        if (badge) {
+            badge.style.display = 'inline-block';
+            badge.innerHTML = `⭐ ${parseFloat(driverData.avg_rating).toFixed(1)} <span style="font-weight: normal; opacity: 0.8;">(${driverData.total_ratings})</span>`;
+        }
+    }
 
     // Initialize Setup Map
     initSetupMap();
@@ -497,9 +506,14 @@ async function respondToRide(accepted) {
     if (accepted) {
         socket.emit('accept-ride', {
             userId: currentRequest.userId,
-            routeId: currentRoute.id, // Use currentRoute.id
+            routeId: currentRoute.id,
             driverName: driverData.name,
-            vehicleNumber: driverData.vehicle_number
+            vehicleNumber: driverData.vehicle_number,
+            driverId: currentRoute.driver_id,
+            passengerName: currentRequest.name,
+            passengerPhone: currentRequest.phone,
+            passengers: currentRequest.passengers || 1,
+            seats: currentRequest.seats || 1
         });
 
         // Automatically update the seats based on requested seats
@@ -827,3 +841,50 @@ function setupDriverAutocomplete(inputId, suggestionsId, modeType) {
 
 setupDriverAutocomplete('startLocation', 'startSuggestions', 'start');
 setupDriverAutocomplete('endLocation', 'endSuggestions', 'end');
+
+// ─── Ride History  ──────────────────────────────────────────────
+async function openDriverHistory() {
+    document.getElementById('driverHistoryModal').style.display = 'flex';
+    const listContainer = document.getElementById('driverHistoryList');
+    listContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Loading history...</div>';
+
+    try {
+        const res = await fetch('/api/routes/driver/ride-history', {
+            headers: { 'Authorization': `Bearer ${driverAuthToken}` }
+        });
+        const rides = await res.json();
+
+        if (rides.length === 0) {
+            listContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">No rides found yet.</div>';
+            return;
+        }
+
+        listContainer.innerHTML = rides.map(ride => {
+            const date = new Date(ride.created_at).toLocaleDateString();
+            const ratingHtml = ride.rating 
+                ? `<div style="color: #b45309; font-size: 0.85rem; margin-top: 4px;">⭐ ${ride.rating}/5 ${ride.rating_comment ? `– "${ride.rating_comment}"` : ''}</div>`
+                : `<div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">No rating yet</div>`;
+                
+            return `
+                <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: var(--surface-light);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <strong>${ride.start_location} → ${ride.end_location}</strong>
+                        <span style="color: var(--success); font-weight: 600;">₹${ride.fare}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary);">
+                        <span>👤 ${ride.passenger_name} ${ride.passengers > 1 ? `(${ride.passengers} pax)` : ''}</span>
+                        <span>🗓️ ${date}</span>
+                    </div>
+                    ${ratingHtml}
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Failed to load history:', err);
+        listContainer.innerHTML = '<div style="color: var(--danger); text-align: center; padding: 20px;">Failed to load history.</div>';
+    }
+}
+
+function closeDriverHistory() {
+    document.getElementById('driverHistoryModal').style.display = 'none';
+}

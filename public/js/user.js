@@ -5,6 +5,7 @@
 const socket = io();
 let map, markers = {};
 let vehiclesData = [];
+let userLat = null, userLng = null; // Store user's location for ETA
 
 // ─── Vehicle Icons ────────────────────────────────────────────
 const vehicleEmojis = {
@@ -61,6 +62,8 @@ function initMap() {
       (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
+        userLat = lat;
+        userLng = lng;
 
         if (!myMarker) {
           map.setView([lat, lng], 14);
@@ -119,6 +122,8 @@ function renderVehicleList(vehicles) {
   container.innerHTML = vehicles.map((v, index) => {
     const emptySeats = v.total_seats - v.filled_seats;
     const seatDots = generateSeatDots(v.total_seats, v.filled_seats);
+    const etaBadge = getETABadge(v);
+    const ratingStars = getStarRating(v.avg_rating, v.total_ratings);
 
     return `
       <div class="vehicle-card" style="animation-delay: ${index * 0.1}s" onclick="showVehicleDetail(${v.id})" id="vehicle-card-${v.id}">
@@ -128,9 +133,13 @@ function renderVehicleList(vehicles) {
             <div class="vehicle-info">
               <h3>${capitalize(v.vehicle_type)} – ${v.vehicle_number}</h3>
               <span>${v.driver_name}</span>
+              <div style="margin-top: 2px;">${ratingStars}</div>
             </div>
           </div>
-          <div class="fare-badge">₹${v.fare}</div>
+          <div style="text-align: right;">
+            <div class="fare-badge">₹${v.fare}</div>
+            ${etaBadge}
+          </div>
         </div>
         <div class="card-details">
           <div class="detail-item">
@@ -441,15 +450,44 @@ function setupSocketListeners() {
     }
   });
 
-  socket.on('ride-accepted', (data) => {
+  socket.on('ride-accepted', async (data) => {
     showToast(`✅ Ride Accepted by ${data.driverName || 'Driver'}! They are on the way.`, 'success');
+
+    // Save ride to history
+    try {
+      const historyRes = await fetch('/api/routes/ride-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          routeId: data.routeId,
+          driverId: data.driverId,
+          passengerName: data.passengerName || 'User',
+          passengerPhone: data.passengerPhone || '',
+          passengers: data.passengers || 1,
+          seats: data.seats || 1
+        })
+      });
+      const historyData = await historyRes.json();
+      window._lastRideId = historyData.rideId; // Store for rating
+    } catch (e) {
+      console.error('Failed to save ride history:', e);
+    }
 
     const wrapper = document.getElementById(`requestFormWrapper-${data.routeId}`);
     if (wrapper) {
       wrapper.innerHTML = `
-        <div style="padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); border-radius: 8px; text-align: center;">
-          <h4 style="color: var(--success); margin-bottom: 4px;">Ride Confirmed!</h4>
-          <p style="font-size: 0.85rem; color: var(--text-secondary);">Tracking live location on map. You can close this window now.</p>
+        <div style="padding: 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); border-radius: 8px; text-align: center;">
+          <h4 style="color: var(--success); margin-bottom: 6px;">✅ Ride Confirmed!</h4>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">Driver aa raha hai! Map pe live location dekho.</p>
+          
+          <div style="border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 8px;">
+            <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 10px;">⭐ Driver ko rate karo:</p>
+            <div id="ratingStars" style="display: flex; gap: 8px; justify-content: center; margin-bottom: 12px;">
+              ${[1, 2, 3, 4, 5].map(i => `<span class="rate-star" data-value="${i}" onclick="selectRating(${i})" style="font-size: 2rem; cursor: pointer; transition: transform 0.2s;">☆</span>`).join('')}
+            </div>
+            <input type="text" id="ratingComment" placeholder="Comment likhein (optional)" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary); margin-bottom: 10px; font-size: 0.85rem;" />
+            <button class="btn btn-primary" style="width: 100%; font-size: 0.9rem;" onclick="submitRating()">⭐ Rating Submit Karo</button>
+          </div>
         </div>
       `;
     }
@@ -478,4 +516,163 @@ function showToast(msg, type = 'info') {
   toast.innerHTML = msg;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
+}
+
+// ─── ETA Calculation (Haversine) ─────────────────────────────
+function getETABadge(vehicle) {
+  if (!userLat || !userLng || !vehicle.current_lat || !vehicle.current_lng) {
+    return '';
+  }
+  const distKm = haversineDistance(userLat, userLng, vehicle.current_lat, vehicle.current_lng);
+  const avgSpeedKmh = 25; // Average city speed
+  const etaMinutes = Math.round((distKm / avgSpeedKmh) * 60);
+
+  if (etaMinutes < 1) return `<div style="font-size: 0.75rem; color: var(--success); margin-top: 4px; font-weight: 600;">📍 Paas mein</div>`;
+  if (etaMinutes > 120) return '';
+
+  return `<div style="font-size: 0.75rem; color: var(--primary); margin-top: 4px; font-weight: 600;">🕐 ~${etaMinutes} min</div>`;
+}
+
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// ─── Star Rating Display ─────────────────────────────────────
+function getStarRating(avgRating, totalRatings) {
+  if (!totalRatings || totalRatings === 0) {
+    return `<span style="font-size: 0.72rem; color: var(--text-muted);">Naya Driver</span>`;
+  }
+  const rating = parseFloat(avgRating) || 0;
+  let stars = '';
+  for (let i = 1; i <= 5; i++) {
+    if (i <= Math.floor(rating)) {
+      stars += '⭐';
+    } else if (i - 0.5 <= rating) {
+      stars += '⭐';
+    } else {
+      stars += '☆';
+    }
+  }
+  return `<span style="font-size: 0.72rem;">${stars} <span style="color: var(--text-muted);">(${rating}/5 · ${totalRatings} rides)</span></span>`;
+}
+
+// ─── Rating Selection & Submit ───────────────────────────────
+let selectedRating = 0;
+
+function selectRating(value) {
+  selectedRating = value;
+  const stars = document.querySelectorAll('.rate-star');
+  stars.forEach(star => {
+    const v = parseInt(star.getAttribute('data-value'));
+    star.textContent = v <= value ? '⭐' : '☆';
+    star.style.transform = v <= value ? 'scale(1.2)' : 'scale(1)';
+  });
+}
+
+async function submitRating() {
+  if (!selectedRating || !window._lastRideId) {
+    showToast('Pehle star select karo!', 'error');
+    return;
+  }
+
+  const comment = document.getElementById('ratingComment')?.value || '';
+
+  try {
+    const res = await fetch(`/api/routes/ride-history/${window._lastRideId}/rate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating: selectedRating, comment })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      showToast(`⭐ ${selectedRating}-star rating diya! Shukriya!`, 'success');
+      // Replace rating form with thank you
+      const starsDiv = document.getElementById('ratingStars');
+      if (starsDiv) {
+        starsDiv.parentElement.innerHTML = `
+          <div style="padding: 12px; text-align: center;">
+            <div style="font-size: 2rem; margin-bottom: 6px;">🎉</div>
+            <p style="font-weight: 600; color: var(--success);">Rating submit ho gaya!</p>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">${'⭐'.repeat(selectedRating)} – Thank you!</p>
+          </div>
+        `;
+      }
+    } else {
+      showToast(data.error || 'Rating submit nahi ho saka', 'error');
+    }
+  } catch (e) {
+    console.error('Rating submit error:', e);
+    showToast('Rating submit mein error aaya', 'error');
+  }
+}
+
+// ─── User Ride History ─────────────────────────────────────────
+function openUserHistory() {
+  const modal = document.getElementById('userHistoryModal');
+  if(modal) modal.style.display = 'flex';
+}
+
+function closeUserHistory() {
+  const modal = document.getElementById('userHistoryModal');
+  if(modal) modal.style.display = 'none';
+}
+
+async function fetchUserHistory() {
+  const phone = document.getElementById('userHistoryPhone').value.trim();
+  const listContainer = document.getElementById('userHistoryList');
+  
+  if (!phone || phone.length < 10) {
+    showToast('Valid phone number daalein', 'error');
+    return;
+  }
+
+  listContainer.style.display = 'block';
+  listContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Fetching rides...</div>';
+
+  try {
+    const res = await fetch(`/api/routes/ride-history/${encodeURIComponent(phone)}`);
+    const rides = await res.json();
+
+    if (rides.length === 0) {
+      listContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Koi rides nahi mili is number pe.</div>';
+      return;
+    }
+
+    listContainer.innerHTML = rides.map(ride => {
+      const date = new Date(ride.created_at).toLocaleDateString();
+      const ratingHtml = ride.rating 
+          ? `<div style="color: #b45309; font-size: 0.85rem; margin-top: 4px;">⭐ ${ride.rating}/5</div>`
+          : `<div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">No rating</div>`;
+      
+      let statusColor = ride.status === 'completed' ? 'var(--success)' : 'var(--primary)';
+          
+      return `
+          <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: var(--surface-light); text-align: left;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <strong style="font-size: 0.9rem;">${ride.start_location} → ${ride.end_location}</strong>
+                  <span style="color: ${statusColor}; font-weight: 600; font-size: 0.85rem; padding: 2px 6px; background: rgba(59,130,246,0.1); border-radius: 4px; text-transform: capitalize;">${ride.status}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px;">
+                  <span>🚗 ${ride.driver_name} (${ride.vehicle_number})</span>
+                  <span style="font-weight: 600;">₹${ride.fare}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">🗓️ ${date}</span>
+                  ${ratingHtml}
+              </div>
+          </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Failed to load history:', err);
+    listContainer.innerHTML = '<div style="color: var(--danger); text-align: center; padding: 20px;">Error loading history.</div>';
+  }
 }

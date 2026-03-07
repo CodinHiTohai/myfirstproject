@@ -20,8 +20,12 @@
             <div class="logo-icon">👁️</div>
             <span class="logo-text">Eye In</span>
         </a>
-        <div class="navbar-links">
-            <span id="driverInfo" style="color: var(--text-secondary); font-size: 0.85rem;"></span>
+        <div class="navbar-links" style="display: flex; align-items: center; gap: 12px;">
+            <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                <span id="driverInfo" style="color: var(--text-secondary); font-size: 0.85rem;"></span>
+                <span id="driverRatingBadge" style="background: rgba(251,191,36,0.15); color: #b45309; padding: 2px 6px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; display: none; margin-top: 2px;">⭐ New</span>
+            </div>
+            <button onclick="openDriverHistory()" style="background: rgba(59,130,246,0.1); border: 1px solid var(--primary); color: var(--primary); border-radius: 6px; padding: 6px 10px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: inherit; font-weight: 500;">📜 History</button>
             <a href="#" onclick="logout()" style="color: var(--danger);">Logout</a>
         </div>
     </nav>

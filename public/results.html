@@ -59,7 +59,8 @@
             <div class="logo-icon">👁️</div>
             <span class="logo-text">Eye In</span>
         </a>
-        <div class="navbar-links">
+        <div class="navbar-links" style="display: flex; align-items: center; gap: 12px;">
+            <button onclick="openUserHistory()" style="background: rgba(59,130,246,0.1); border: 1px solid var(--primary); color: var(--primary); border-radius: 6px; padding: 6px 10px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: inherit; font-weight: 500;">📜 My Rides</button>
             <a href="/">🏠 Home</a>
             <a href="/driver-login.html">🚗 Driver</a>
         </div>
@@ -87,6 +88,26 @@
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal()">✕</button>
             <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- User Ride History Modal -->
+    <div class="modal-overlay" id="userHistoryModal" style="display: none; z-index: 1000; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); justify-content: center; align-items: center;">
+        <div class="modal-content" style="background: white; border-radius: 12px; max-width: 450px; width: 90%; max-height: 85vh; padding: 24px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-size: 1.5rem;">📜 My Rides</h2>
+                <button onclick="closeUserHistory()" style="background: none; border: none; font-size: 1.8rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+            
+            <div id="userHistoryPhoneSection" style="text-align: center; margin-bottom: 20px;">
+                <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 16px;">Apna phone number daalein purani rides dekhne ke liye:</p>
+                <input type="tel" id="userHistoryPhone" placeholder="Mobile Number" class="form-control" style="margin-bottom: 12px; text-align: center; padding: 12px;">
+                <button class="btn btn-primary" onclick="fetchUserHistory()" style="width: 100%; padding: 12px;">Search Rides</button>
+            </div>
+
+            <div id="userHistoryList" style="display: none; max-height: 50vh; overflow-y: auto;">
+                <!-- Rides injected here -->
+            </div>
         </div>
     </div>
 

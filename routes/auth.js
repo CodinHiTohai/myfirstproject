@@ -39,7 +39,9 @@ router.post('/driver-register', async (req, res) => {
                 name,
                 phone,
                 vehicle_number,
-                vehicle_type
+                vehicle_type,
+                avg_rating: 0,
+                total_ratings: 0
             }
         });
     } catch (error) {
@@ -80,7 +82,9 @@ router.post('/driver-login', async (req, res) => {
                 name: driver.name,
                 phone: driver.phone,
                 vehicle_number: driver.vehicle_number,
-                vehicle_type: driver.vehicle_type
+                vehicle_type: driver.vehicle_type,
+                avg_rating: driver.avg_rating,
+                total_ratings: driver.total_ratings
             }
         });
     } catch (error) {
