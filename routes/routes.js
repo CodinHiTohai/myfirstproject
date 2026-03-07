@@ -2,6 +2,33 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 
+// Get driver's active route (for auto-restore on dashboard load)
+router.get('/driver/active', authenticateToken, async (req, res) => {
+    const db = req.app.get('db');
+
+    try {
+        const query = `
+            SELECT r.*, d.name as driver_name, d.vehicle_number, d.vehicle_type,
+                   (r.total_seats - r.filled_seats) as empty_seats
+            FROM routes r
+            JOIN drivers d ON r.driver_id = d.id
+            WHERE r.driver_id = ? AND r.status = 'active'
+            ORDER BY r.created_at DESC
+            LIMIT 1
+        `;
+        const [routes] = await db.query(query, [req.user.id]);
+
+        if (routes.length === 0) {
+            return res.status(404).json({ message: 'No active route.' });
+        }
+
+        res.json(routes[0]);
+    } catch (error) {
+        console.error('Get active route error:', error);
+        res.status(500).json({ error: 'Database error.' });
+    }
+});
+
 // Search routes by pickup & destination
 router.get('/search', async (req, res) => {
     const { pickup, destination } = req.query;

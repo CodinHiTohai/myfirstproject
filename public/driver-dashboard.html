@@ -7,6 +7,8 @@
     <title>Driver Dashboard – Eye In</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
 </head>
 
 <body>
@@ -59,7 +61,25 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
                 <!-- Route Setup -->
                 <div class="section-card" id="routeSetupSection">
-                    <h3>📍 Route Setup</h3>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="margin: 0;">📍 Route Setup</h3>
+                        <!-- Saved prefs badge -->
+                        <div id="savedPrefsBadge" style="
+                            display: none;
+                            align-items: center;
+                            gap: 6px;
+                            background: rgba(99,102,241,0.12);
+                            border: 1px solid var(--primary);
+                            border-radius: 20px;
+                            padding: 4px 12px;
+                            font-size: 0.75rem;
+                            color: var(--primary);
+                            font-weight: 600;
+                        ">
+                            💾 <span>Saved</span>
+                        </div>
+                    </div>
 
                     <div style="margin-bottom: 20px;">
                         <div
@@ -109,6 +129,19 @@
                                     max="60" required>
                             </div>
                         </div>
+
+                        <!-- Save / Clear Buttons -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                            <button type="button" class="btn btn-outline" onclick="saveRoutePreferences()"
+                                style="font-size: 0.82rem; padding: 8px; border-color: var(--primary); color: var(--primary);">
+                                💾 Route Save Karo
+                            </button>
+                            <button type="button" class="btn btn-outline" onclick="clearSavedPreferences()"
+                                style="font-size: 0.82rem; padding: 8px; border-color: var(--danger); color: var(--danger);">
+                                🗑️ Saved Route Clear
+                            </button>
+                        </div>
+
                         <button type="submit" class="btn btn-success btn-block btn-lg" id="goLiveBtn">
                             🟢 Go Live
                         </button>
@@ -228,6 +261,21 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/driver.js"></script>
+    <script src="/js/pwa.js"></script>
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
 </body>
 
 </html>

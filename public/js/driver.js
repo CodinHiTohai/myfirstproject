@@ -42,9 +42,97 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize Setup Map
     initSetupMap();
 
-    // Check if driver has active route
+    // Load saved route preferences from localStorage first
+    loadSavedRoutePreferences();
+
+    // Check if driver has active route from server
     checkActiveRoute();
 });
+
+// ─── Load Saved Route Preferences ───────────────────────────
+function loadSavedRoutePreferences() {
+    const saved = localStorage.getItem('driverRoutePrefs');
+    if (!saved) return;
+
+    try {
+        const prefs = JSON.parse(saved);
+        if (prefs.startLocation) document.getElementById('startLocation').value = prefs.startLocation;
+        if (prefs.endLocation) document.getElementById('endLocation').value = prefs.endLocation;
+        if (prefs.stops) document.getElementById('stopsInput').value = prefs.stops;
+        if (prefs.fare) document.getElementById('fareInput').value = prefs.fare;
+        if (prefs.totalSeats) document.getElementById('seatsInput').value = prefs.totalSeats;
+
+        // Show a saved badge
+        const saveIndicator = document.getElementById('savedPrefsBadge');
+        if (saveIndicator) {
+            saveIndicator.style.display = 'flex';
+        }
+
+        showToast(`💾 Pichli route load ho gayi: ${prefs.startLocation} → ${prefs.endLocation}`, 'info');
+    } catch (e) {
+        console.error('Saved prefs load error:', e);
+    }
+}
+
+// ─── Save Route Preferences to localStorage ─────────────────
+function saveRoutePreferences() {
+    const prefs = {
+        startLocation: document.getElementById('startLocation').value.trim(),
+        endLocation: document.getElementById('endLocation').value.trim(),
+        stops: document.getElementById('stopsInput').value.trim(),
+        fare: document.getElementById('fareInput').value,
+        totalSeats: document.getElementById('seatsInput').value,
+        savedAt: new Date().toLocaleString('hi-IN')
+    };
+
+    if (!prefs.startLocation || !prefs.endLocation) {
+        showToast('Start aur End location fill karein pehle', 'error');
+        return;
+    }
+
+    localStorage.setItem('driverRoutePrefs', JSON.stringify(prefs));
+    showToast(`✅ Route save ho gayi! ${prefs.startLocation} → ${prefs.endLocation}`, 'success');
+
+    // Update badge
+    const saveIndicator = document.getElementById('savedPrefsBadge');
+    if (saveIndicator) {
+        saveIndicator.style.display = 'flex';
+        saveIndicator.querySelector('span').textContent = `Saved: ${prefs.startLocation} → ${prefs.endLocation}`;
+    }
+}
+
+// ─── Clear Saved Preferences ─────────────────────────────────
+function clearSavedPreferences() {
+    if (!confirm('Kya aap saved route delete karna chahte hain?')) return;
+    localStorage.removeItem('driverRoutePrefs');
+    document.getElementById('routeForm').reset();
+    const saveIndicator = document.getElementById('savedPrefsBadge');
+    if (saveIndicator) saveIndicator.style.display = 'none';
+    showToast('🗑️ Saved route clear ho gayi', 'info');
+}
+
+// ─── Check Active Route from Server ─────────────────────────
+async function checkActiveRoute() {
+    if (!driverAuthToken) return;
+
+    try {
+        const res = await fetch('/api/routes/driver/active', {
+            headers: { 'Authorization': `Bearer ${driverAuthToken}` }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.id) {
+                currentRoute = data;
+                activateLiveMode();
+                showToast('🟢 Aapki pichli ride abhi bhi active hai!', 'success');
+            }
+        }
+    } catch (err) {
+        // Silently fail – this is optional
+        console.log('No active route found or network error:', err.message);
+    }
+}
 
 // ─── Setup Map Initialization ────────────────────────────────
 function initSetupMap() {
@@ -130,16 +218,15 @@ async function goLive(e) {
 
     const start_location = document.getElementById('startLocation').value.trim();
     const end_location = document.getElementById('endLocation').value.trim();
-    const stops = document.getElementById('stopsInput').value.trim(); // Added stops
+    const stops = document.getElementById('stopsInput').value.trim();
     const fare = document.getElementById('fareInput').value;
     const total_seats = document.getElementById('seatsInput').value;
 
-    // Use clicked map coords if they exist, otherwise fallback
     const startLat = selectedStartCoords ? selectedStartCoords.lat : null;
     const startLng = selectedStartCoords ? selectedStartCoords.lng : null;
 
-    if (!selectedStartCoords) { // Check if start coords are available
-        showToast("Map is still loading location, please wait a second.", "warning");
+    if (!selectedStartCoords) {
+        showToast('Map is still loading location, please wait a second.', 'warning');
         return;
     }
 
@@ -157,9 +244,9 @@ async function goLive(e) {
             body: JSON.stringify({
                 start_location,
                 end_location,
-                stops, // Added stops
+                stops,
                 fare,
-                total_seats, // Renamed to total_seats for consistency with backend
+                total_seats,
                 lat: startLat,
                 lng: startLng
             })
@@ -170,8 +257,19 @@ async function goLive(e) {
         if (!res.ok) throw new Error(data.error || 'Failed to go live');
 
         currentRoute = data;
+
+        // ✅ AUTO-SAVE preferences whenever driver goes live
+        const prefs = { startLocation: start_location, endLocation: end_location, stops, fare, totalSeats: total_seats, savedAt: new Date().toLocaleString('hi-IN') };
+        localStorage.setItem('driverRoutePrefs', JSON.stringify(prefs));
+        const saveIndicator = document.getElementById('savedPrefsBadge');
+        if (saveIndicator) {
+            saveIndicator.style.display = 'flex';
+            const span = saveIndicator.querySelector('span');
+            if (span) span.textContent = `Auto-saved: ${start_location} → ${end_location}`;
+        }
+
         activateLiveMode();
-        showToast('🟢 You are now LIVE!', 'success');
+        showToast('🟢 You are now LIVE! Route saved automatically.', 'success');
 
     } catch (err) {
         showToast(err.message, 'error');

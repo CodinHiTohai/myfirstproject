@@ -1,0 +1,17 @@
+{
+    "name": "Eye In Ride Booking",
+    "short_name": "Eye In",
+    "description": "Book rides and track vehicles in real-time.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#3b82f6",
+    "icons": [
+        {
+            "src": "/img/icon.svg",
+            "sizes": "192x192 512x512",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}

@@ -8,6 +8,8 @@
     content="Eye In - Smart local transport visibility platform. See live seat availability, routes, and fares in real-time.">
   <title>Eye In – See Your Ride Before You Board</title>
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#3b82f6">
 </head>
 
 <body>
@@ -37,28 +39,48 @@
 
       <!-- Search Box -->
       <div class="search-box" id="searchBox">
+        <!-- Pickup: Auto-Detect -->
         <div class="form-group">
           <div class="autocomplete-wrapper">
             <div class="input-icon-wrap">
               <span class="icon" id="autoLocateBtn" onclick="fetchUserLocation()"
                 style="cursor: pointer; z-index: 10; transition: transform 0.2s;"
                 title="Tap to detect Live Location">📍</span>
-              <input type="text" class="form-control" id="pickupInput" placeholder="Enter pickup location..." value=""
-                autocomplete="off" style="padding-left: 44px;">
+              <input type="text" class="form-control" id="pickupInput"
+                placeholder="📡 Aapki location detect ho rahi hai..." value="" autocomplete="off"
+                style="padding-left: 44px; opacity: 0.7;" readonly>
             </div>
             <div class="autocomplete-suggestions" id="pickupSuggestions"></div>
           </div>
+          <!-- Location detecting badge -->
+          <div id="locationBadge" style="
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            font-size: 0.78rem;
+            color: var(--primary);
+            padding-left: 4px;
+          ">
+            <div
+              style="width: 8px; height: 8px; background: var(--primary); border-radius: 50%; animation: pulse 1.2s infinite;">
+            </div>
+            Live location detect ho rahi hai...
+          </div>
         </div>
+
+        <!-- Destination -->
         <div class="form-group">
           <div class="autocomplete-wrapper">
             <div class="input-icon-wrap">
               <span class="icon">🎯</span>
-              <input type="text" class="form-control" id="destinationInput" placeholder="Enter destination..." value=""
-                autocomplete="off">
+              <input type="text" class="form-control" id="destinationInput"
+                placeholder="Kahan jaana hai? (e.g. Kota Junction)" value="" autocomplete="off">
             </div>
             <div class="autocomplete-suggestions" id="destinationSuggestions"></div>
           </div>
         </div>
+
         <button class="btn btn-primary btn-block btn-lg" id="searchBtn" onclick="searchRoute()">
           🔍 Search Route
         </button>
@@ -175,48 +197,120 @@
     setupAutocomplete('pickupInput', 'pickupSuggestions');
     setupAutocomplete('destinationInput', 'destinationSuggestions');
 
-    // Automatically Detect User's Live Location
+    // ─── Auto-Detect User Location on Page Load ───────────────
     const fetchUserLocation = () => {
       const pickupInput = document.getElementById('pickupInput');
-      if (navigator.geolocation) {
-        pickupInput.placeholder = "Detecting location...";
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            try {
-              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
-              const data = await res.json();
-              const placeName = data.name || data.address.suburb || data.address.city || data.address.state || "Current Location";
+      const locationBadge = document.getElementById('locationBadge');
+      const pinIcon = document.getElementById('autoLocateBtn');
 
-              if (pickupInput) {
-                pickupInput.value = placeName;
-                pickupInput.placeholder = "Enter pickup location...";
-                showToast("📍 Live location detected!", "success");
-              }
-            } catch (err) {
-              console.error("Reverse geocoding failed", err);
-              pickupInput.placeholder = "Enter pickup location...";
-            }
-          },
-          (err) => {
-            console.log("User denied location or timeout", err.message, err.code);
-            pickupInput.placeholder = "Enter pickup location...";
+      // Animate pin icon
+      pinIcon.style.animation = 'spin 1s linear infinite';
 
-            // Only show toast if it's not a permission denial (code 1)
-            // Timeout is code 3, Position unavailable is code 2
-            if (err.code !== 1) {
-              showToast("Could not detect location automatically. Try again.", "error");
-            }
-          },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
-      } else {
-        showToast("Geolocation is not supported by your browser.", "error");
+      if (!navigator.geolocation) {
+        // Geolocation not supported – allow manual input
+        pickupInput.placeholder = 'Enter pickup location...';
+        pickupInput.removeAttribute('readonly');
+        pickupInput.style.opacity = '1';
+        locationBadge.style.display = 'none';
+        pinIcon.style.animation = '';
+        setupAutocomplete('pickupInput', 'pickupSuggestions');
+        showToast('Geolocation supported nahi hai. Manually enter karein.', 'error');
+        return;
       }
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+            const data = await res.json();
+            // Prefer village/suburb > city area > city > state
+            const placeName =
+              data.address.village ||
+              data.address.suburb ||
+              data.address.neighbourhood ||
+              data.address.town ||
+              data.address.city ||
+              data.address.county ||
+              data.address.state ||
+              'Current Location';
+
+            pickupInput.value = placeName;
+            pickupInput.placeholder = 'Enter pickup location...';
+            pickupInput.removeAttribute('readonly');
+            pickupInput.style.opacity = '1';
+            locationBadge.innerHTML = `<span style="color: var(--success)">✅ ${placeName} – detected</span>`;
+            setTimeout(() => { locationBadge.style.display = 'none'; }, 3000);
+            pinIcon.style.animation = '';
+            pinIcon.textContent = '✅';
+            setTimeout(() => { pinIcon.textContent = '📍'; }, 3000);
+
+            // Immediately focus destination field
+            document.getElementById('destinationInput').focus();
+            showToast('📍 Location detect ho gayi! Ab destination select karein.', 'success');
+
+          } catch (err) {
+            console.error('Reverse geocoding failed', err);
+            pickupInput.placeholder = 'Enter pickup location...';
+            pickupInput.removeAttribute('readonly');
+            pickupInput.style.opacity = '1';
+            locationBadge.style.display = 'none';
+            pinIcon.style.animation = '';
+            setupAutocomplete('pickupInput', 'pickupSuggestions');
+          }
+        },
+        (err) => {
+          console.log('Location error:', err.code, err.message);
+          // Allow manual input on any error
+          pickupInput.placeholder = 'Enter pickup location...';
+          pickupInput.removeAttribute('readonly');
+          pickupInput.style.opacity = '1';
+          locationBadge.style.display = 'none';
+          pinIcon.style.animation = '';
+          setupAutocomplete('pickupInput', 'pickupSuggestions');
+
+          if (err.code === 1) {
+            showToast('📍 Location permission denied. Manually enter karein.', 'error');
+          } else {
+            showToast('Location detect nahi ho saka. Manually darj karein.', 'error');
+          }
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+      );
     };
 
+    // Add spin keyframe
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(1.4); }
+      }
+    `;
+    document.head.appendChild(style);
+
     window.onload = fetchUserLocation;
+  </script>
+
+  <script src="/js/pwa.js"></script>
+  <script>
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          })
+          .catch(err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+      });
+    }
   </script>
 </body>
 
