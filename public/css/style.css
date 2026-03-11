@@ -628,10 +628,14 @@ body {
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-xl);
   padding: 32px;
-  max-width: 480px;
-  width: 90%;
+  max-width: 500px;
+  width: 92%;
+  max-height: 90vh;
+  overflow-y: auto;
   animation: scaleIn 0.3s ease-out;
   position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-primary) transparent;
 }
 
 .modal-close {
@@ -732,7 +736,7 @@ body {
   color: var(--danger);
 }
 
-/* ─── Seat Layout ──────────────────────────────────────────── */
+/* ─── Interactive Seat Layout ──────────────────────────────── */
 .seat-layout {
   margin-top: 24px;
 }
@@ -746,10 +750,11 @@ body {
 
 .seat-legend {
   display: flex;
-  gap: 20px;
+  gap: 14px;
   margin-bottom: 16px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
+  flex-wrap: wrap;
 }
 
 .seat-legend span {
@@ -761,58 +766,258 @@ body {
 .seat-legend .dot {
   width: 12px;
   height: 12px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
-.seat-legend .dot.green {
-  background: var(--success);
+.seat-legend .dot.green { background: var(--success); }
+.seat-legend .dot.red { background: var(--danger); }
+.seat-legend .dot.blue { background: var(--accent-primary); }
+.seat-legend .dot.gray { background: var(--info); }
+
+/* Vehicle Body Container */
+.vehicle-body {
+  background: rgba(255,255,255,0.03);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 20px 20px 16px 16px;
+  padding: 16px 12px 20px;
+  position: relative;
+  max-width: 280px;
+  margin: 0 auto;
+  overflow: hidden;
 }
 
-.seat-legend .dot.red {
-  background: var(--danger);
+.vehicle-body::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 30%;
+  right: 30%;
+  height: 4px;
+  background: var(--accent-gradient);
+  border-radius: 0 0 4px 4px;
+}
+
+.vehicle-body.bus-body {
+  max-width: 220px;
+  border-radius: 14px 14px 10px 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-primary) transparent;
+}
+
+.vehicle-body.bus-body::-webkit-scrollbar {
+  width: 4px;
+}
+.vehicle-body.bus-body::-webkit-scrollbar-thumb {
+  background: var(--accent-primary);
+  border-radius: 4px;
+}
+
+/* Steering Wheel / Driver Section */
+.driver-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px dashed rgba(59, 130, 246, 0.3);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: var(--info);
+  font-weight: 500;
+}
+
+.driver-section .steering {
+  font-size: 1.3rem;
+}
+
+/* Aisle/Separator */
+.seat-aisle {
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.seat-aisle::after {
+  content: '';
+  width: 1px;
+  height: 100%;
+  background: rgba(255,255,255,0.06);
+  position: absolute;
 }
 
 .seat-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
 .seat-row {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  align-items: center;
 }
 
+.seat-row-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  width: 16px;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Individual Seat */
 .seat {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm);
+  width: 42px;
+  height: 42px;
+  border-radius: 8px 8px 6px 6px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.65rem;
+  font-weight: 700;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+  position: relative;
+  user-select: none;
+}
+
+.seat .seat-icon {
+  font-size: 0.9rem;
+  line-height: 1;
+  margin-bottom: 1px;
+}
+
+.seat .seat-num {
+  font-size: 0.55rem;
+  opacity: 0.8;
+}
+
+/* Backrest effect */
+.seat::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 3px;
+  right: 3px;
+  height: 4px;
+  border-radius: 4px 4px 0 0;
+  transition: inherit;
+}
+
+/* Empty/Available Seat */
+.seat.empty {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1.5px solid rgba(16, 185, 129, 0.5);
+  color: var(--success);
+  cursor: pointer;
+}
+
+.seat.empty::before {
+  background: rgba(16, 185, 129, 0.35);
+}
+
+.seat.empty:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: var(--success);
+  transform: scale(1.08);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Selected Seat */
+.seat.selected {
+  background: rgba(99, 102, 241, 0.25);
+  border: 2px solid var(--accent-primary);
+  color: #c4b5fd;
+  cursor: pointer;
+  transform: scale(1.05);
+  box-shadow: 0 0 16px var(--accent-glow);
+  animation: seatPulse 2s ease-in-out infinite;
+}
+
+.seat.selected::before {
+  background: var(--accent-primary);
+}
+
+.seat.selected .seat-icon {
+  font-size: 1rem;
+}
+
+@keyframes seatPulse {
+  0%, 100% { box-shadow: 0 0 12px var(--accent-glow); }
+  50% { box-shadow: 0 0 22px var(--accent-glow), 0 0 35px rgba(99,102,241,0.15); }
+}
+
+/* Filled/Occupied Seat */
+.seat.filled {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1.5px solid rgba(239, 68, 68, 0.35);
+  color: rgba(239, 68, 68, 0.6);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.seat.filled::before {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+/* Driver Seat */
+.seat.driver-seat {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1.5px solid rgba(59, 130, 246, 0.3);
+  color: var(--info);
+  cursor: default;
+  width: 42px;
+}
+
+.seat.driver-seat::before {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+/* Selection Counter */
+.selection-counter {
+  margin-top: 14px;
+  padding: 10px 16px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 10px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
   transition: var(--transition);
 }
 
-.seat.empty {
-  background: var(--success-bg);
-  border: 1px solid var(--success);
-  color: var(--success);
+.selection-counter.has-selection {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
-.seat.filled {
-  background: var(--danger-bg);
-  border: 1px solid var(--danger);
-  color: var(--danger);
+.selection-counter .count {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--accent-primary);
 }
 
-.seat.driver {
-  background: var(--info-bg);
-  border: 1px solid var(--info);
-  color: var(--info);
-  width: 92px;
+/* Door indicator */
+.door-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  padding: 4px 0;
+  margin: 4px 0;
+  border-top: 1px dashed rgba(255,255,255,0.06);
+  border-bottom: 1px dashed rgba(255,255,255,0.06);
 }
 
 /* ─── Split Page Layout (Login) ─────────────────────────────── */

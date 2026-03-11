@@ -712,6 +712,16 @@ socket.on('incoming-ride-request', (data) => {
         document.getElementById('requestPhone').innerText = data.phone;
         document.getElementById('requestPassengers').innerText = passengers;
         document.getElementById('requestSeatsBadge').innerText = data.seats;
+
+        // Show selected seat numbers if available
+        const seatNumsEl = document.getElementById('requestSeatNumbers');
+        if (seatNumsEl && data.seatNumbers && data.seatNumbers.length > 0) {
+            seatNumsEl.style.display = 'block';
+            seatNumsEl.innerText = `🎯 Selected Seats: ${data.seatNumbers.join(', ')}`;
+        } else if (seatNumsEl) {
+            seatNumsEl.style.display = 'none';
+        }
+
         document.getElementById('availableSeatsInfo').innerText =
             `✅ Aapki gaadi mein abhi ${availableSeats} seat(s) available hain`;
 

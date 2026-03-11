@@ -218,12 +218,17 @@ function renderMapMarkers(vehicles) {
   }
 }
 
+// ─── Selected Seats Tracking ─────────────────────────────────
+let selectedSeats = {}; // { routeId: Set([seatNumber, ...]) }
+
 // ─── Show Vehicle Detail Modal ───────────────────────────────
 function showVehicleDetail(routeId) {
   const vehicle = vehiclesData.find(v => v.id === routeId);
   if (!vehicle) return;
 
   const emptySeats = vehicle.total_seats - vehicle.filled_seats;
+  selectedSeats[routeId] = new Set();
+
   const seatLayout = generateSeatLayout(vehicle);
 
   document.getElementById('modalBody').innerHTML = `
@@ -255,12 +260,17 @@ function showVehicleDetail(routeId) {
     </div>
 
     <div class="seat-layout">
-      <h3>💺 Seat Layout</h3>
+      <h3>💺 Apni Seat Chhune – Tap to Select</h3>
       <div class="seat-legend">
-        <span><div class="dot green"></div> Empty</span>
-        <span><div class="dot red"></div> Filled</span>
+        <span><div class="dot green"></div> Khaali</span>
+        <span><div class="dot red"></div> Bhari</span>
+        <span><div class="dot blue"></div> Aapka</span>
+        <span><div class="dot gray"></div> Driver</span>
       </div>
       ${seatLayout}
+      <div class="selection-counter" id="selectionCounter-${routeId}">
+        Seat select karein ☝️
+      </div>
     </div>
 
     <!-- Request Ride Section -->
@@ -279,7 +289,7 @@ function showVehicleDetail(routeId) {
           <span style="font-size: 0.8rem; color: var(--text-muted);">log (max ${emptySeats} seats available)</span>
         </div>
 
-        <!-- Seats Needed -->
+        <!-- Seats Needed (auto-synced with seat click) -->
         <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">💺 Kitni seats chahiye?</label>
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
           <button type="button" onclick="changeSeats(-1, ${vehicle.id})" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">−</button>
@@ -296,12 +306,65 @@ function showVehicleDetail(routeId) {
   document.getElementById('vehicleModal').style.display = 'flex';
 }
 
+// ─── Toggle Seat Selection ───────────────────────────────────
+function toggleSeat(routeId, seatNum, totalEmpty) {
+  if (!selectedSeats[routeId]) selectedSeats[routeId] = new Set();
+
+  const seatEl = document.getElementById(`seat-${routeId}-${seatNum}`);
+  if (!seatEl) return;
+
+  if (selectedSeats[routeId].has(seatNum)) {
+    // Deselect
+    selectedSeats[routeId].delete(seatNum);
+    seatEl.className = 'seat empty';
+    seatEl.innerHTML = `<span class="seat-icon">💺</span><span class="seat-num">${seatNum}</span>`;
+  } else {
+    // Select — check if not exceeding empty seats
+    if (selectedSeats[routeId].size >= totalEmpty) {
+      showToast(`Sirf ${totalEmpty} seats available hain!`, 'error');
+      return;
+    }
+    selectedSeats[routeId].add(seatNum);
+    seatEl.className = 'seat selected';
+    seatEl.innerHTML = `<span class="seat-icon">✅</span><span class="seat-num">${seatNum}</span>`;
+  }
+
+  // Update selection counter
+  const count = selectedSeats[routeId].size;
+  const counter = document.getElementById(`selectionCounter-${routeId}`);
+  if (counter) {
+    if (count > 0) {
+      const seatNums = Array.from(selectedSeats[routeId]).sort((a, b) => a - b).join(', ');
+      counter.className = 'selection-counter has-selection';
+      counter.innerHTML = `<span class="count">${count}</span> seat${count > 1 ? 's' : ''} selected — <strong>Seat ${seatNums}</strong>`;
+    } else {
+      counter.className = 'selection-counter';
+      counter.innerHTML = 'Seat select karein ☝️';
+    }
+  }
+
+  // Auto-update seat & passenger counters
+  const seatsEl = document.getElementById(`requestedSeatsCount-${routeId}`);
+  const passengersEl = document.getElementById(`passengerCount-${routeId}`);
+  if (seatsEl && count > 0) {
+    seatsEl.textContent = count;
+    if (passengersEl && parseInt(passengersEl.textContent) > count) {
+      passengersEl.textContent = count;
+    }
+    if (passengersEl && parseInt(passengersEl.textContent) < 1) {
+      passengersEl.textContent = 1;
+    }
+  }
+}
+
 // ─── Passenger / Seat Counter Helpers ────────────────────────
 function changePassengers(delta, routeId) {
   const el = document.getElementById(`passengerCount-${routeId}`);
   let val = parseInt(el.textContent) + delta;
-  const maxSeats = parseInt(el.closest('div').querySelector('span:last-child').textContent);
+  const vehicle = vehiclesData.find(v => v.id === routeId);
+  const maxSeats = vehicle ? vehicle.total_seats - vehicle.filled_seats : 10;
   if (val < 1) val = 1;
+  if (val > maxSeats) val = maxSeats;
   el.textContent = val;
   // Auto-sync seat count if seats < passengers
   const seatsEl = document.getElementById(`requestedSeatsCount-${routeId}`);
@@ -311,10 +374,13 @@ function changePassengers(delta, routeId) {
 function changeSeats(delta, routeId) {
   const el = document.getElementById(`requestedSeatsCount-${routeId}`);
   const passengersEl = document.getElementById(`passengerCount-${routeId}`);
+  const vehicle = vehiclesData.find(v => v.id === routeId);
+  const maxSeats = vehicle ? vehicle.total_seats - vehicle.filled_seats : 10;
   let val = parseInt(el.textContent) + delta;
   const passengers = parseInt(passengersEl.textContent);
-  // Can't book less seats than passengers
   if (val < passengers) val = passengers;
+  if (val < 1) val = 1;
+  if (val > maxSeats) val = maxSeats;
   el.textContent = val;
 }
 
@@ -334,6 +400,9 @@ function submitRideRequest(routeId, maxSeats) {
     return;
   }
 
+  // Get selected seat numbers
+  const seatNumbers = selectedSeats[routeId] ? Array.from(selectedSeats[routeId]).sort((a,b) => a-b) : [];
+
   const btn = document.getElementById(`requestBtn-${routeId}`);
   btn.innerText = 'Location le raha hai...';
   btn.disabled = true;
@@ -346,6 +415,7 @@ function submitRideRequest(routeId, maxSeats) {
       phone: phone,
       passengers: passengers,
       seats: seats,
+      seatNumbers: seatNumbers,
       userLat: lat,
       userLng: lng
     });
@@ -365,43 +435,132 @@ function submitRideRequest(routeId, maxSeats) {
 
 // ─── Generate Seat Layout by Vehicle Type ────────────────────
 function generateSeatLayout(vehicle) {
-  const { vehicle_type, total_seats, filled_seats } = vehicle;
-  let html = '<div class="seat-grid">';
+  const { vehicle_type, total_seats, filled_seats, id: routeId } = vehicle;
+  const emptySeats = total_seats - filled_seats;
 
   if (vehicle_type === 'auto') {
-    // Auto: Driver row + 2 seats + 1 seat
-    html += `<div class="seat-row"><div class="seat driver">🚗 Driver</div></div>`;
-    html += `<div class="seat-row">`;
-    html += `<div class="seat ${filled_seats >= 1 ? 'filled' : 'empty'}">S1</div>`;
-    html += `<div class="seat ${filled_seats >= 2 ? 'filled' : 'empty'}">S2</div>`;
-    html += `</div>`;
-    html += `<div class="seat-row">`;
-    html += `<div class="seat ${filled_seats >= 3 ? 'filled' : 'empty'}">S3</div>`;
-    html += `</div>`;
+    return generateAutoLayout(routeId, total_seats, filled_seats, emptySeats);
   } else if (vehicle_type === 'bus') {
-    // Bus: 2-column layout
-    html += `<div class="seat-row"><div class="seat driver">🚌 Driver</div></div>`;
-    for (let i = 0; i < total_seats; i += 2) {
-      html += `<div class="seat-row">`;
-      html += `<div class="seat ${i < filled_seats ? 'filled' : 'empty'}">S${i + 1}</div>`;
-      if (i + 1 < total_seats) {
-        html += `<div class="seat ${(i + 1) < filled_seats ? 'filled' : 'empty'}">S${i + 2}</div>`;
-      }
-      html += `</div>`;
-    }
+    return generateBusLayout(routeId, total_seats, filled_seats, emptySeats);
   } else {
-    // Car: Driver + passenger rows
-    html += `<div class="seat-row"><div class="seat driver">🚗 Driver</div>`;
-    html += `<div class="seat ${filled_seats >= 1 ? 'filled' : 'empty'}">S1</div></div>`;
-    html += `<div class="seat-row">`;
-    for (let i = 1; i < total_seats; i++) {
-      html += `<div class="seat ${i < filled_seats ? 'filled' : 'empty'}">S${i + 1}</div>`;
+    return generateCarLayout(routeId, total_seats, filled_seats, emptySeats);
+  }
+}
+
+// ─── Auto Layout (3 seats) ───────────────────────────────────
+function generateAutoLayout(routeId, total, filled, emptySeats) {
+  let seats = '';
+
+  // Driver row
+  seats += `<div class="driver-section"><span class="steering">🛺</span> Driver</div>`;
+
+  // Row 1: 1 seat (front passenger) - but auto-rickshaw usually has all back
+  // Typical auto: 1 front, 2 back OR 3 back seats
+  seats += `<div class="seat-grid">`;
+
+  // Front area: driver side only
+  seats += `<div class="seat-row" style="justify-content: center; margin-bottom: 4px;">`;
+  seats += renderSeat(routeId, 1, filled >= 1, emptySeats);
+  seats += `</div>`;
+
+  // Back row: 2 seats
+  seats += `<div class="seat-row" style="justify-content: center;">`;
+  seats += renderSeat(routeId, 2, filled >= 2, emptySeats);
+  seats += renderSeat(routeId, 3, filled >= 3, emptySeats);
+  seats += `</div>`;
+
+  seats += `</div>`;
+
+  return `<div class="vehicle-body">${seats}</div>`;
+}
+
+// ─── Car Layout (4 seats) ───────────────────────────────────
+function generateCarLayout(routeId, total, filled, emptySeats) {
+  let seats = '';
+
+  seats += `<div class="driver-section"><span class="steering">🚗</span> Driver</div>`;
+  seats += `<div class="seat-grid">`;
+
+  // Front row: driver (already shown) + 1 front passenger
+  seats += `<div class="seat-row" style="justify-content: space-between; width: 100%;">`;
+  seats += `<div class="seat driver-seat"><span class="seat-icon">🎡</span><span class="seat-num">D</span></div>`;
+  seats += renderSeat(routeId, 1, filled >= 1, emptySeats);
+  seats += `</div>`;
+
+  // Back row: 3 seats (or total - 1)
+  seats += `<div class="seat-row" style="justify-content: center; margin-top: 6px;">`;
+  for (let i = 2; i <= Math.min(total, 4); i++) {
+    seats += renderSeat(routeId, i, i <= filled + 1 && i - 1 < filled, emptySeats);
+  }
+  seats += `</div>`;
+
+  seats += `</div>`;
+
+  return `<div class="vehicle-body">${seats}</div>`;
+}
+
+// ─── Bus Layout (2+2 with aisle) ─────────────────────────────
+function generateBusLayout(routeId, total, filled, emptySeats) {
+  let seats = '';
+
+  seats += `<div class="driver-section"><span class="steering">🚌</span> Driver</div>`;
+  seats += `<div class="door-indicator">🚪 Entry Door</div>`;
+  seats += `<div class="seat-grid">`;
+
+  // 2+2 seat layout with aisle
+  const rows = Math.ceil(total / 4);
+  let seatNum = 1;
+
+  for (let r = 0; r < rows; r++) {
+    seats += `<div class="seat-row">`;
+    // Row label
+    seats += `<span class="seat-row-label">${r + 1}</span>`;
+
+    // Left pair
+    for (let c = 0; c < 2 && seatNum <= total; c++) {
+      const isFilled = seatNum <= filled;
+      seats += renderSeat(routeId, seatNum, isFilled, emptySeats);
+      seatNum++;
     }
-    html += `</div>`;
+
+    // Aisle (only if there are right-side seats)
+    if (seatNum <= total) {
+      seats += `<div class="seat-aisle"></div>`;
+    }
+
+    // Right pair
+    for (let c = 0; c < 2 && seatNum <= total; c++) {
+      const isFilled = seatNum <= filled;
+      seats += renderSeat(routeId, seatNum, isFilled, emptySeats);
+      seatNum++;
+    }
+
+    seats += `</div>`;
+
+    // Add door indicator at mid-point for buses
+    if (r === Math.floor(rows / 2) - 1 && rows > 3) {
+      seats += `<div class="door-indicator">🚪 Middle Door</div>`;
+    }
   }
 
-  html += '</div>';
-  return html;
+  seats += `</div>`;
+
+  return `<div class="vehicle-body bus-body">${seats}</div>`;
+}
+
+// ─── Render a Single Seat ────────────────────────────────────
+function renderSeat(routeId, seatNum, isFilled, totalEmpty) {
+  if (isFilled) {
+    return `<div class="seat filled" title="Seat ${seatNum} — Bhari hai">
+      <span class="seat-icon">🧑</span><span class="seat-num">${seatNum}</span>
+    </div>`;
+  } else {
+    return `<div class="seat empty" id="seat-${routeId}-${seatNum}" 
+      onclick="toggleSeat(${routeId}, ${seatNum}, ${totalEmpty})"
+      title="Seat ${seatNum} — Khaali hai, click to select">
+      <span class="seat-icon">💺</span><span class="seat-num">${seatNum}</span>
+    </div>`;
+  }
 }
 
 // ─── Close Modal ──────────────────────────────────────────────

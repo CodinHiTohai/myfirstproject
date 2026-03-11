@@ -74,9 +74,9 @@ io.on('connection', (socket) => {
 
     // User requests a ride
     socket.on('request-ride', (data) => {
-        // data = { routeId, userId, name, phone, passengers, seats }
-        const { routeId, name, phone, passengers, seats } = data;
-        console.log(`Ride requested for route ${routeId} by ${name} — ${passengers} log, ${seats} seats`);
+        // data = { routeId, userId, name, phone, passengers, seats, seatNumbers }
+        const { routeId, name, phone, passengers, seats, seatNumbers } = data;
+        console.log(`Ride requested for route ${routeId} by ${name} — ${passengers} log, ${seats} seats, selected: ${seatNumbers || 'any'}`);
         // Relay to driver
         io.to(`driver_${routeId}`).emit('incoming-ride-request', {
             userId: socket.id,
@@ -84,6 +84,7 @@ io.on('connection', (socket) => {
             phone,
             passengers,
             seats,
+            seatNumbers: seatNumbers || [],
             routeId
         });
     });

@@ -37,13 +37,13 @@ CREATE TABLE IF NOT EXISTS admins (
 
 -- Seed Data: Admin (password: admin123)
 INSERT IGNORE INTO admins (username, password) VALUES
-('admin', '$2a$10$xPBm5JBqPJYfVfVlWQ7QXOzKz0Hk5VxGqKgE8mJOyRcNqW1TJgXbG');
+('admin', '$2a$10$rdshRHrvDLM9VvU9Vdn88OUwaANWunx7.0Y1K6amqZBKp7QNeUQU.');
 
 -- Seed Data: Drivers (password: driver123)
 INSERT IGNORE INTO drivers (name, phone, password, vehicle_number, vehicle_type) VALUES
-('Ramesh Kumar', '9876543210', '$2a$10$xPBm5JBqPJYfVfVlWQ7QXOzKz0Hk5VxGqKgE8mJOyRcNqW1TJgXbG', 'RJ14 AB1234', 'auto'),
-('Suresh Sharma', '9876543211', '$2a$10$xPBm5JBqPJYfVfVlWQ7QXOzKz0Hk5VxGqKgE8mJOyRcNqW1TJgXbG', 'RJ20 CD4567', 'bus'),
-('Vikram Singh', '9876543212', '$2a$10$xPBm5JBqPJYfVfVlWQ7QXOzKz0Hk5VxGqKgE8mJOyRcNqW1TJgXbG', 'RJ14 EF8901', 'car');
+('Ramesh Kumar', '9876543210', '$2a$10$kS0aPgLlKcdRfi37VszHe.kSKxBs0GCx3tPKqYummXNNggNEzdo5q', 'RJ14 AB1234', 'auto'),
+('Suresh Sharma', '9876543211', '$2a$10$kS0aPgLlKcdRfi37VszHe.kSKxBs0GCx3tPKqYummXNNggNEzdo5q', 'RJ20 CD4567', 'bus'),
+('Vikram Singh', '9876543212', '$2a$10$kS0aPgLlKcdRfi37VszHe.kSKxBs0GCx3tPKqYummXNNggNEzdo5q', 'RJ14 EF8901', 'car');
 
 -- Seed Data: Active Routes
 INSERT IGNORE INTO routes (driver_id, start_location, end_location, stops, fare, total_seats, filled_seats, current_lat, current_lng, status) VALUES
