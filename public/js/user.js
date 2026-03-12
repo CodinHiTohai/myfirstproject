@@ -230,42 +230,50 @@ function showVehicleDetail(routeId) {
   selectedSeats[routeId] = new Set();
 
   const seatLayout = generateSeatLayout(vehicle);
+  const ratingStars = getStarRating(vehicle.avg_rating, vehicle.total_ratings);
 
   document.getElementById('modalBody').innerHTML = `
-    <div class="modal-header">
-      <div class="vehicle-icon-lg ${vehicle.vehicle_type}">${vehicleEmojis[vehicle.vehicle_type] || '🚗'}</div>
-      <div>
-        <h2>${capitalize(vehicle.vehicle_type)}</h2>
-        <div class="vehicle-num">${vehicle.vehicle_number} • ${vehicle.driver_name}</div>
+    <!-- Premium Vehicle Header -->
+    <div class="vmodal-hero">
+      <div class="vmodal-hero-bg ${vehicle.vehicle_type}"></div>
+      <div class="vmodal-hero-content">
+        <div class="vmodal-vehicle-badge ${vehicle.vehicle_type}">${vehicleEmojis[vehicle.vehicle_type] || '🚗'}</div>
+        <div class="vmodal-title-wrap">
+          <h2 class="vmodal-title">${capitalize(vehicle.vehicle_type)}</h2>
+          <div class="vmodal-subtitle">${vehicle.vehicle_number} • ${vehicle.driver_name}</div>
+          <div style="margin-top: 4px;">${ratingStars}</div>
+        </div>
+      </div>
+      <div class="vmodal-quick-stats">
+        <div class="vqs-item">
+          <span class="vqs-icon">📍</span>
+          <span class="vqs-text">${vehicle.start_location} → ${vehicle.end_location}</span>
+        </div>
+        <div class="vqs-item">
+          <span class="vqs-value fare">₹${vehicle.fare}</span>
+          <span class="vqs-label">Fare</span>
+        </div>
+        <div class="vqs-item">
+          <span class="vqs-value ${emptySeats > 0 ? 'available' : 'full'}">${emptySeats}</span>
+          <span class="vqs-label">Seats Available</span>
+        </div>
       </div>
     </div>
 
-    <div class="modal-details">
-      <div class="detail-block">
-        <div class="detail-label">Route</div>
-        <div class="detail-value">${vehicle.start_location} → ${vehicle.end_location}</div>
+    <!-- Seat Selection Section -->
+    <div class="seat-selection-section">
+      <div class="section-heading">
+        <span class="section-heading-icon">💺</span>
+        <div>
+          <h3>Apni Seat Chuno</h3>
+          <p>Tap karke seat select karo</p>
+        </div>
       </div>
-      <div class="detail-block">
-        <div class="detail-label">Fare</div>
-        <div class="detail-value success">₹${vehicle.fare}</div>
-      </div>
-      <div class="detail-block">
-        <div class="detail-label">Filled Seats</div>
-        <div class="detail-value danger">${vehicle.filled_seats}</div>
-      </div>
-      <div class="detail-block">
-        <div class="detail-label">Empty Seats</div>
-        <div class="detail-value success">${emptySeats}</div>
-      </div>
-    </div>
-
-    <div class="seat-layout">
-      <h3>💺 Apni Seat Chhune – Tap to Select</h3>
-      <div class="seat-legend">
-        <span><div class="dot green"></div> Khaali</span>
-        <span><div class="dot red"></div> Bhari</span>
-        <span><div class="dot blue"></div> Aapka</span>
-        <span><div class="dot gray"></div> Driver</span>
+      <div class="seat-legend-premium">
+        <span class="legend-chip available"><span class="legend-dot"></span> Khaali</span>
+        <span class="legend-chip occupied"><span class="legend-dot"></span> Bhari</span>
+        <span class="legend-chip selected"><span class="legend-dot"></span> Aapka</span>
+        <span class="legend-chip driver"><span class="legend-dot"></span> Driver</span>
       </div>
       ${seatLayout}
       <div class="selection-counter" id="selectionCounter-${routeId}">
@@ -273,33 +281,55 @@ function showVehicleDetail(routeId) {
       </div>
     </div>
 
-    <!-- Request Ride Section -->
-    <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-      <h3 style="margin-bottom: 12px; font-size: 1.1rem;">📝 Ride Request</h3>
-      <div id="requestFormWrapper-${vehicle.id}">
-        <input type="text" id="passengerName" placeholder="Aapka Naam (e.g. Rohan)" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary);" />
-        <input type="tel" id="passengerPhone" placeholder="Mobile Number" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary);" />
-
-        <!-- Passenger Count -->
-        <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">👥 Aap kitne log hain?</label>
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-          <button type="button" onclick="changePassengers(-1, ${vehicle.id})" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">−</button>
-          <span id="passengerCount-${vehicle.id}" style="font-size: 1.5rem; font-weight: 700; min-width: 32px; text-align: center;">1</span>
-          <button type="button" onclick="changePassengers(1, ${vehicle.id})" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">+</button>
-          <span style="font-size: 0.8rem; color: var(--text-muted);">log (max ${emptySeats} seats available)</span>
-        </div>
-
-        <!-- Seats Needed (auto-synced with seat click) -->
-        <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">💺 Kitni seats chahiye?</label>
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-          <button type="button" onclick="changeSeats(-1, ${vehicle.id})" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">−</button>
-          <span id="requestedSeatsCount-${vehicle.id}" style="font-size: 1.5rem; font-weight: 700; min-width: 32px; text-align: center;">1</span>
-          <button type="button" onclick="changeSeats(1, ${vehicle.id})" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">+</button>
-          <span style="font-size: 0.8rem; color: var(--text-muted);">seats (max ${emptySeats})</span>
-        </div>
-
-        <button class="btn btn-primary" style="width: 100%;" onclick="submitRideRequest(${vehicle.id}, ${emptySeats})" id="requestBtn-${vehicle.id}">🚗 Send Request to Driver</button>
+    <!-- Premium Booking Card -->
+    <div class="booking-card" id="requestFormWrapper-${vehicle.id}">
+      <div class="booking-card-header">
+        <span class="booking-card-icon">🎫</span>
+        <div><h3>Book Your Ride</h3><p>Details bharo aur request bhejo</p></div>
       </div>
+      
+      <div class="booking-input-group">
+        <div class="booking-input-wrap">
+          <span class="booking-input-icon">👤</span>
+          <input type="text" id="passengerName" class="booking-input" placeholder="Aapka Naam" autocomplete="off" />
+        </div>
+        <div class="booking-input-wrap">
+          <span class="booking-input-icon">📱</span>
+          <div class="phone-input-wrap">
+            <span class="country-code">+91</span>
+            <input type="tel" id="passengerPhone" class="booking-input phone" placeholder="Mobile Number" maxlength="10" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+
+      <div class="booking-counters">
+        <div class="counter-card">
+          <div class="counter-label">👥 Kitne log?</div>
+          <div class="counter-controls">
+            <button class="counter-btn minus" onclick="changePassengers(-1, ${vehicle.id})">−</button>
+            <span class="counter-value" id="passengerCount-${vehicle.id}">1</span>
+            <button class="counter-btn plus" onclick="changePassengers(1, ${vehicle.id})">+</button>
+          </div>
+          <div class="counter-hint">max ${emptySeats} available</div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">💺 Kitni seats?</div>
+          <div class="counter-controls">
+            <button class="counter-btn minus" onclick="changeSeats(-1, ${vehicle.id})">−</button>
+            <span class="counter-value" id="requestedSeatsCount-${vehicle.id}">1</span>
+            <button class="counter-btn plus" onclick="changeSeats(1, ${vehicle.id})">+</button>
+          </div>
+          <div class="counter-hint">max ${emptySeats}</div>
+        </div>
+      </div>
+
+      <button class="booking-submit-btn" onclick="submitRideRequest(${vehicle.id}, ${emptySeats})" id="requestBtn-${vehicle.id}">
+        <span class="booking-btn-content">
+          <span class="booking-btn-icon">🚗</span>
+          <span>Send Request to Driver</span>
+        </span>
+        <span class="booking-btn-shine"></span>
+      </button>
     </div>
   `;
 
@@ -316,8 +346,8 @@ function toggleSeat(routeId, seatNum, totalEmpty) {
   if (selectedSeats[routeId].has(seatNum)) {
     // Deselect
     selectedSeats[routeId].delete(seatNum);
-    seatEl.className = 'seat empty';
-    seatEl.innerHTML = `<span class="seat-icon">💺</span><span class="seat-num">${seatNum}</span>`;
+    seatEl.className = 'rseat empty';
+    seatEl.innerHTML = `<div class="rseat-backrest"></div><div class="rseat-cushion"><span class="rseat-icon">💺</span></div><div class="rseat-number">${seatNum}</div>`;
   } else {
     // Select — check if not exceeding empty seats
     if (selectedSeats[routeId].size >= totalEmpty) {
@@ -325,8 +355,8 @@ function toggleSeat(routeId, seatNum, totalEmpty) {
       return;
     }
     selectedSeats[routeId].add(seatNum);
-    seatEl.className = 'seat selected';
-    seatEl.innerHTML = `<span class="seat-icon">✅</span><span class="seat-num">${seatNum}</span>`;
+    seatEl.className = 'rseat selected';
+    seatEl.innerHTML = `<div class="rseat-backrest"></div><div class="rseat-cushion"><span class="rseat-check">✅</span></div><div class="rseat-number">${seatNum}</div>`;
   }
 
   // Update selection counter
@@ -401,7 +431,7 @@ function submitRideRequest(routeId, maxSeats) {
   }
 
   // Get selected seat numbers
-  const seatNumbers = selectedSeats[routeId] ? Array.from(selectedSeats[routeId]).sort((a,b) => a-b) : [];
+  const seatNumbers = selectedSeats[routeId] ? Array.from(selectedSeats[routeId]).sort((a, b) => a - b) : [];
 
   const btn = document.getElementById(`requestBtn-${routeId}`);
   btn.innerText = 'Location le raha hai...';
@@ -435,7 +465,13 @@ function submitRideRequest(routeId, maxSeats) {
 
 // ─── Generate Seat Layout by Vehicle Type ────────────────────
 function generateSeatLayout(vehicle) {
-  const { vehicle_type, total_seats, filled_seats, id: routeId } = vehicle;
+  const { id: routeId } = vehicle;
+
+  // Safe cast incoming data to prevent `"5" > 6` type string logic issues
+  const total_seats = Number(vehicle.total_seats);
+  const filled_seats = Number(vehicle.filled_seats);
+  const vehicle_type = vehicle.vehicle_type;
+
   const emptySeats = total_seats - filled_seats;
 
   if (vehicle_type === 'auto') {
@@ -447,120 +483,277 @@ function generateSeatLayout(vehicle) {
   }
 }
 
-// ─── Auto Layout (3 seats) ───────────────────────────────────
+// ─── Auto Layout (Realistic Auto Rickshaw) ───────────────────
 function generateAutoLayout(routeId, total, filled, emptySeats) {
-  let seats = '';
+  let frontSeats = '';
+  let middleSeats = '';
+  let backSeats = '';
 
-  // Driver row
-  seats += `<div class="driver-section"><span class="steering">🛺</span> Driver</div>`;
-
-  // Row 1: 1 seat (front passenger) - but auto-rickshaw usually has all back
-  // Typical auto: 1 front, 2 back OR 3 back seats
-  seats += `<div class="seat-grid">`;
-
-  // Front area: driver side only
-  seats += `<div class="seat-row" style="justify-content: center; margin-bottom: 4px;">`;
-  seats += renderSeat(routeId, 1, filled >= 1, emptySeats);
-  seats += `</div>`;
-
-  // Back row: 2 seats
-  seats += `<div class="seat-row" style="justify-content: center;">`;
-  seats += renderSeat(routeId, 2, filled >= 2, emptySeats);
-  seats += renderSeat(routeId, 3, filled >= 3, emptySeats);
-  seats += `</div>`;
-
-  seats += `</div>`;
-
-  return `<div class="vehicle-body">${seats}</div>`;
-}
-
-// ─── Car Layout (4 seats) ───────────────────────────────────
-function generateCarLayout(routeId, total, filled, emptySeats) {
-  let seats = '';
-
-  seats += `<div class="driver-section"><span class="steering">🚗</span> Driver</div>`;
-  seats += `<div class="seat-grid">`;
-
-  // Front row: driver (already shown) + 1 front passenger
-  seats += `<div class="seat-row" style="justify-content: space-between; width: 100%;">`;
-  seats += `<div class="seat driver-seat"><span class="seat-icon">🎡</span><span class="seat-num">D</span></div>`;
-  seats += renderSeat(routeId, 1, filled >= 1, emptySeats);
-  seats += `</div>`;
-
-  // Back row: 3 seats (or total - 1)
-  seats += `<div class="seat-row" style="justify-content: center; margin-top: 6px;">`;
-  for (let i = 2; i <= Math.min(total, 4); i++) {
-    seats += renderSeat(routeId, i, i <= filled + 1 && i - 1 < filled, emptySeats);
+  let currentSeatNum = 1;
+  // Front passenger row (next to driver) - up to 2 seats
+  for (let i = 0; i < 2 && currentSeatNum <= total; i++) {
+    frontSeats += renderRealisticSeat(routeId, currentSeatNum, filled >= currentSeatNum, emptySeats);
+    currentSeatNum++;
   }
-  seats += `</div>`;
 
-  seats += `</div>`;
+  // Middle row - up to 4 seats (Used if total > 6)
+  if (total > 6) {
+    for (let i = 0; i < 4 && currentSeatNum <= total; i++) {
+      middleSeats += renderRealisticSeat(routeId, currentSeatNum, filled >= currentSeatNum, emptySeats);
+      currentSeatNum++;
+    }
+  }
 
-  return `<div class="vehicle-body">${seats}</div>`;
+  // Back row - up to 4 seats
+  for (let i = 0; i < 4 && currentSeatNum <= total; i++) {
+    backSeats += renderRealisticSeat(routeId, currentSeatNum, filled >= currentSeatNum, emptySeats);
+    currentSeatNum++;
+  }
+
+  const isMegaAuto = total > 6;
+  const overlayScale = isMegaAuto ? 'transform: scale(0.85); transform-origin: top center;' : '';
+  const rowGap = isMegaAuto ? '2px' : '6px';
+  const svgScale = isMegaAuto ? 'transform: scaleY(1.1); transform-origin: top center;' : '';
+
+  let html = `
+    <div class="realistic-vehicle auto-vehicle">
+      <!-- Auto Rickshaw SVG Shape -->
+      <div class="auto-body-wrap">
+        <svg class="auto-svg" viewBox="0 0 260 320" xmlns="http://www.w3.org/2000/svg" style="${svgScale}">
+          <!-- Auto body outline -->
+          <defs>
+            <linearGradient id="autoGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(245,158,11,0.2)"/>
+              <stop offset="100%" stop-color="rgba(245,158,11,0.05)"/>
+            </linearGradient>
+            <filter id="autoGlow">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          
+          <!-- Auto roof / canopy -->
+          <path d="M50 80 Q50 30 130 25 Q210 30 210 80 L210 100 L50 100 Z" 
+            fill="url(#autoGrad)" stroke="rgba(245,158,11,0.5)" stroke-width="2"/>
+          
+          <!-- Support pillars -->
+          <rect x="55" y="98" width="6" height="70" rx="3" fill="rgba(245,158,11,0.3)"/>
+          <rect x="199" y="98" width="6" height="70" rx="3" fill="rgba(245,158,11,0.3)"/>
+          
+          <!-- Main body -->
+          <rect x="40" y="165" width="180" height="120" rx="16" 
+            fill="url(#autoGrad)" stroke="rgba(245,158,11,0.4)" stroke-width="2"/>
+          
+          <!-- Handlebar area -->
+          <circle cx="130" cy="55" r="14" fill="none" stroke="rgba(245,158,11,0.6)" stroke-width="2.5"/>
+          <line x1="130" y1="69" x2="130" y2="90" stroke="rgba(245,158,11,0.5)" stroke-width="2"/>
+          
+          <!-- Front wheel area -->
+          <circle cx="130" cy="305" r="14" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3"/>
+          <circle cx="130" cy="305" r="5" fill="rgba(255,255,255,0.1)"/>
+          
+          <!-- Back wheels -->
+          <circle cx="55" cy="290" r="12" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3"/>
+          <circle cx="205" cy="290" r="12" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3"/>
+          
+          <!-- Headlight -->
+          <ellipse cx="130" cy="95" rx="10" ry="6" fill="rgba(253,224,71,0.3)" filter="url(#autoGlow)"/>
+        </svg>
+        
+        <!-- Driver area overlaid -->
+        <div class="auto-driver-area">
+          <div class="driver-badge-real">
+            <span class="driver-wheel">🎡</span>
+            <span>Driver</span>
+          </div>
+        </div>
+        
+        <!-- Seats overlaid on auto body -->
+        <div class="auto-seats-overlay" style="${overlayScale}">
+          ${frontSeats ? `<div class="auto-seat-row front-row">${frontSeats}</div>` : ''}
+          ${middleSeats ? `<div class="auto-seat-row middle-row" style="margin-top: ${rowGap}; gap: 6px;">${middleSeats}</div>` : ''}
+          ${backSeats ? `<div class="auto-seat-row back-row" style="margin-top: ${rowGap}; gap: 6px;">${backSeats}</div>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+  return html;
 }
 
-// ─── Bus Layout (2+2 with aisle) ─────────────────────────────
+// ─── Car Layout (Realistic Sedan Top-Down) ───────────────────
+function generateCarLayout(routeId, total, filled, emptySeats) {
+  let backSeats = '';
+  for (let i = 2; i <= Math.min(total, 4); i++) {
+    backSeats += renderRealisticSeat(routeId, i, i <= filled + 1 && i - 1 < filled, emptySeats);
+  }
+
+  let html = `
+    <div class="realistic-vehicle car-vehicle">
+      <div class="car-body-wrap">
+        <svg class="car-svg" viewBox="0 0 240 360" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="carGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(16,185,129,0.15)"/>
+              <stop offset="100%" stop-color="rgba(16,185,129,0.05)"/>
+            </linearGradient>
+            <filter id="carGlow">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          
+          <!-- Car body -->
+          <path d="M40 60 Q40 20 120 15 Q200 20 200 60 L210 100 Q215 120 210 140 L210 280 Q210 310 200 330 Q190 350 120 355 Q50 350 40 330 Q30 310 30 280 L30 140 Q25 120 30 100 Z" 
+            fill="url(#carGrad)" stroke="rgba(16,185,129,0.4)" stroke-width="2"/>
+          
+          <!-- Windshield -->
+          <path d="M55 70 Q55 45 120 40 Q185 45 185 70 L185 100 L55 100 Z" 
+            fill="rgba(16,185,129,0.1)" stroke="rgba(16,185,129,0.3)" stroke-width="1.5"/>
+          
+          <!-- Rear windshield -->
+          <path d="M60 290 L180 290 Q175 320 120 325 Q65 320 60 290 Z" 
+            fill="rgba(16,185,129,0.1)" stroke="rgba(16,185,129,0.3)" stroke-width="1.5"/>
+          
+          <!-- Side mirrors -->
+          <ellipse cx="22" cy="108" rx="10" ry="6" fill="rgba(16,185,129,0.15)" stroke="rgba(16,185,129,0.3)" stroke-width="1"/>
+          <ellipse cx="218" cy="108" rx="10" ry="6" fill="rgba(16,185,129,0.15)" stroke="rgba(16,185,129,0.3)" stroke-width="1"/>
+          
+          <!-- Headlights -->
+          <ellipse cx="65" cy="30" rx="12" ry="6" fill="rgba(253,224,71,0.2)" filter="url(#carGlow)"/>
+          <ellipse cx="175" cy="30" rx="12" ry="6" fill="rgba(253,224,71,0.2)" filter="url(#carGlow)"/>
+          
+          <!-- Tail lights -->
+          <ellipse cx="60" cy="340" rx="10" ry="5" fill="rgba(239,68,68,0.25)" filter="url(#carGlow)"/>
+          <ellipse cx="180" cy="340" rx="10" ry="5" fill="rgba(239,68,68,0.25)" filter="url(#carGlow)"/>
+          
+          <!-- Door lines -->
+          <line x1="35" y1="160" x2="35" y2="270" stroke="rgba(16,185,129,0.2)" stroke-width="1"/>
+          <line x1="205" y1="160" x2="205" y2="270" stroke="rgba(16,185,129,0.2)" stroke-width="1"/>
+          
+          <!-- Center console line -->
+          <line x1="120" y1="110" x2="120" y2="175" stroke="rgba(255,255,255,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+        </svg>
+        
+        <!-- Driver area -->
+        <div class="car-driver-area">
+          <div class="driver-badge-real car">
+            <span class="driver-wheel">🎡</span>
+            <span>D</span>
+          </div>
+        </div>
+        
+        <!-- Front passenger seat -->
+        <div class="car-seats-front">
+          ${renderRealisticSeat(routeId, 1, filled >= 1, emptySeats)}
+        </div>
+        
+        <!-- Back row seats -->
+        <div class="car-seats-back">
+          ${backSeats}
+        </div>
+      </div>
+    </div>
+  `;
+  return html;
+}
+
+// ─── Bus Layout (Realistic Bus Cross-Section) ────────────────
 function generateBusLayout(routeId, total, filled, emptySeats) {
-  let seats = '';
-
-  seats += `<div class="driver-section"><span class="steering">🚌</span> Driver</div>`;
-  seats += `<div class="door-indicator">🚪 Entry Door</div>`;
-  seats += `<div class="seat-grid">`;
-
-  // 2+2 seat layout with aisle
   const rows = Math.ceil(total / 4);
   let seatNum = 1;
+  let rowsHtml = '';
 
   for (let r = 0; r < rows; r++) {
-    seats += `<div class="seat-row">`;
-    // Row label
-    seats += `<span class="seat-row-label">${r + 1}</span>`;
+    let leftSeats = '';
+    let rightSeats = '';
 
     // Left pair
     for (let c = 0; c < 2 && seatNum <= total; c++) {
-      const isFilled = seatNum <= filled;
-      seats += renderSeat(routeId, seatNum, isFilled, emptySeats);
+      leftSeats += renderRealisticSeat(routeId, seatNum, seatNum <= filled, emptySeats);
       seatNum++;
-    }
-
-    // Aisle (only if there are right-side seats)
-    if (seatNum <= total) {
-      seats += `<div class="seat-aisle"></div>`;
     }
 
     // Right pair
     for (let c = 0; c < 2 && seatNum <= total; c++) {
-      const isFilled = seatNum <= filled;
-      seats += renderSeat(routeId, seatNum, isFilled, emptySeats);
+      rightSeats += renderRealisticSeat(routeId, seatNum, seatNum <= filled, emptySeats);
       seatNum++;
     }
 
-    seats += `</div>`;
-
-    // Add door indicator at mid-point for buses
+    // Mid door
+    let midDoor = '';
     if (r === Math.floor(rows / 2) - 1 && rows > 3) {
-      seats += `<div class="door-indicator">🚪 Middle Door</div>`;
+      midDoor = `<div class="bus-mid-door"><span>🚪</span> Emergency Exit</div>`;
     }
+
+    rowsHtml += `
+      <div class="bus-seat-row">
+        <span class="bus-row-num">${r + 1}</span>
+        <div class="bus-left-pair">${leftSeats}</div>
+        <div class="bus-aisle-gap"></div>
+        <div class="bus-right-pair">${rightSeats}</div>
+      </div>
+      ${midDoor}
+    `;
   }
 
-  seats += `</div>`;
-
-  return `<div class="vehicle-body bus-body">${seats}</div>`;
+  let html = `
+    <div class="realistic-vehicle bus-vehicle">
+      <div class="bus-body-wrap">
+        <!-- Bus front -->
+        <div class="bus-front">
+          <div class="bus-windshield">
+            <span class="bus-front-lights">💡</span>
+            <span class="bus-route-display">${vehiclesData.find(v => v.id === routeId)?.start_location?.substring(0, 10) || 'Route'}</span>
+            <span class="bus-front-lights">💡</span>
+          </div>
+          <div class="bus-driver-row">
+            <div class="driver-badge-real bus">
+              <span class="driver-wheel">🎡</span>
+              <span>Driver</span>
+            </div>
+            <div class="bus-entry-door">
+              <span>🚪</span> Entry
+            </div>
+          </div>
+        </div>
+        
+        <!-- Bus seat rows -->
+        <div class="bus-seats-container">
+          ${rowsHtml}
+        </div>
+        
+        <!-- Bus rear -->
+        <div class="bus-rear">
+          <div class="bus-rear-window"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  return html;
 }
 
-// ─── Render a Single Seat ────────────────────────────────────
-function renderSeat(routeId, seatNum, isFilled, totalEmpty) {
+// ─── Render a Realistic Single Seat ──────────────────────────
+function renderRealisticSeat(routeId, seatNum, isFilled, totalEmpty) {
   if (isFilled) {
-    return `<div class="seat filled" title="Seat ${seatNum} — Bhari hai">
-      <span class="seat-icon">🧑</span><span class="seat-num">${seatNum}</span>
+    return `<div class="rseat filled" title="Seat ${seatNum} — Bhari hai">
+      <div class="rseat-backrest"></div>
+      <div class="rseat-cushion"><span class="rseat-person">🧑</span></div>
+      <div class="rseat-number">${seatNum}</div>
     </div>`;
   } else {
-    return `<div class="seat empty" id="seat-${routeId}-${seatNum}" 
+    return `<div class="rseat empty" id="seat-${routeId}-${seatNum}" 
       onclick="toggleSeat(${routeId}, ${seatNum}, ${totalEmpty})"
-      title="Seat ${seatNum} — Khaali hai, click to select">
-      <span class="seat-icon">💺</span><span class="seat-num">${seatNum}</span>
+      title="Seat ${seatNum} — Khaali hai, tap to select">
+      <div class="rseat-backrest"></div>
+      <div class="rseat-cushion"><span class="rseat-icon">💺</span></div>
+      <div class="rseat-number">${seatNum}</div>
     </div>`;
   }
+}
+
+// Legacy renderSeat for compatibility
+function renderSeat(routeId, seatNum, isFilled, totalEmpty) {
+  return renderRealisticSeat(routeId, seatNum, isFilled, totalEmpty);
 }
 
 // ─── Close Modal ──────────────────────────────────────────────
@@ -600,7 +793,17 @@ function setupSocketListeners() {
   socket.on('new-route', (data) => {
     // Refresh the search
     const params = new URLSearchParams(window.location.search);
-    searchRoutes(params.get('pickup'), params.get('destination'));
+    if (params.get('pickup')) {
+      searchRoutes(params.get('pickup'), params.get('destination'));
+    }
+  });
+
+  socket.on('route-updated', (data) => {
+    // Refresh the search to reflect updated seats, fare, or route details
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('pickup')) {
+      searchRoutes(params.get('pickup'), params.get('destination'));
+    }
   });
 
   socket.on('location-updated', (data) => {
@@ -776,18 +979,18 @@ async function submitRating() {
 // ─── User Ride History ─────────────────────────────────────────
 function openUserHistory() {
   const modal = document.getElementById('userHistoryModal');
-  if(modal) modal.style.display = 'flex';
+  if (modal) modal.style.display = 'flex';
 }
 
 function closeUserHistory() {
   const modal = document.getElementById('userHistoryModal');
-  if(modal) modal.style.display = 'none';
+  if (modal) modal.style.display = 'none';
 }
 
 async function fetchUserHistory() {
   const phone = document.getElementById('userHistoryPhone').value.trim();
   const listContainer = document.getElementById('userHistoryList');
-  
+
   if (!phone || phone.length < 10) {
     showToast('Valid phone number daalein', 'error');
     return;
@@ -807,12 +1010,12 @@ async function fetchUserHistory() {
 
     listContainer.innerHTML = rides.map(ride => {
       const date = new Date(ride.created_at).toLocaleDateString();
-      const ratingHtml = ride.rating 
-          ? `<div style="color: #b45309; font-size: 0.85rem; margin-top: 4px;">⭐ ${ride.rating}/5</div>`
-          : `<div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">No rating</div>`;
-      
+      const ratingHtml = ride.rating
+        ? `<div style="color: #b45309; font-size: 0.85rem; margin-top: 4px;">⭐ ${ride.rating}/5</div>`
+        : `<div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">No rating</div>`;
+
       let statusColor = ride.status === 'completed' ? 'var(--success)' : 'var(--primary)';
-          
+
       return `
           <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: var(--surface-light); text-align: left;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">

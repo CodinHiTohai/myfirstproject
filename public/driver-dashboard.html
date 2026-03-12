@@ -23,9 +23,13 @@
         <div class="navbar-links" style="display: flex; align-items: center; gap: 12px;">
             <div style="display: flex; flex-direction: column; align-items: flex-end;">
                 <span id="driverInfo" style="color: var(--text-secondary); font-size: 0.85rem;"></span>
-                <span id="driverRatingBadge" style="background: rgba(251,191,36,0.15); color: #b45309; padding: 2px 6px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; display: none; margin-top: 2px;">⭐ New</span>
+                <span id="driverRatingBadge"
+                    style="background: rgba(251,191,36,0.15); color: #b45309; padding: 2px 6px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; display: none; margin-top: 2px;">⭐
+                    New</span>
             </div>
-            <button onclick="openDriverHistory()" style="background: rgba(59,130,246,0.1); border: 1px solid var(--primary); color: var(--primary); border-radius: 6px; padding: 6px 10px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: inherit; font-weight: 500;">📜 History</button>
+            <button onclick="openDriverHistory()"
+                style="background: rgba(59,130,246,0.1); border: 1px solid var(--primary); color: var(--primary); border-radius: 6px; padding: 6px 10px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: inherit; font-weight: 500;">📜
+                History</button>
             <a href="#" onclick="logout()" style="color: var(--danger);">Logout</a>
         </div>
     </nav>
@@ -198,64 +202,86 @@
     </div>
 
     <div class="modal-overlay" id="rideRequestModal" style="display: none; z-index: 1000;">
-        <div class="modal-content" style="max-width: 420px; padding: 28px; text-align: center;">
-            <div style="font-size: 3rem; margin-bottom: 12px;">🔔</div>
-            <h2 style="margin-bottom: 6px;">Naya Ride Request!</h2>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px;">Koi aapki gaadi mein
-                baithna chahta hai</p>
+        <div class="modal-content booking-card"
+            style="max-width: 420px; padding: 28px; border-radius: 20px; animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            <div class="booking-card-header" style="justify-content: center; margin-bottom: 24px;">
+                <div class="vmodal-vehicle-badge auto"
+                    style="width: 70px; height: 70px; font-size: 2.5rem; animation: rseatPulse 2s infinite;">🔔</div>
+            </div>
+
+            <h2
+                style="margin-bottom: 6px; font-family: 'Outfit', sans-serif; font-size: 1.6rem; color: var(--text-primary);">
+                New Ride Request!</h2>
+            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">Someone wants to join your
+                route</p>
 
             <!-- Passenger Info -->
             <div
-                style="background: var(--surface-light); border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: left;">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <span style="font-size: 1.4rem;">🧑</span>
-                    <div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">Naam</div>
-                        <strong id="requestName" style="color: var(--text-primary); font-size: 1.1rem;"></strong>
+                style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; margin-bottom: 20px; text-align: left;">
+
+                <div class="booking-input-wrap"
+                    style="margin-bottom: 12px; border: none; background: rgba(255,255,255,0.03);">
+                    <span class="booking-input-icon">🧑</span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span
+                            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Passenger
+                            Name</span>
+                        <strong id="requestName"
+                            style="color: var(--text-primary); font-size: 1.15rem; font-family: 'Outfit', sans-serif;"></strong>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <span style="font-size: 1.4rem;">📞</span>
-                    <div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">Phone</div>
-                        <span id="requestPhone" style="font-size: 1rem;"></span>
+
+                <div class="booking-input-wrap"
+                    style="margin-bottom: 16px; border: none; background: rgba(255,255,255,0.03);">
+                    <span class="booking-input-icon">📞</span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span
+                            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Contact</span>
+                        <span id="requestPhone"
+                            style="font-size: 1.05rem; font-family: 'Inter', sans-serif; letter-spacing: 0.5px;"></span>
                     </div>
                 </div>
-                <!-- People + Seats Row -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px;">
-                    <div
-                        style="background: rgba(99,102,241,0.12); border-radius: 8px; padding: 10px; text-align: center;">
-                        <div style="font-size: 1.6rem;">👥</div>
-                        <div id="requestPassengers" style="font-size: 1.3rem; font-weight: 700; color: var(--primary);">
+
+                <!-- Counters -->
+                <div class="booking-counters" style="margin-bottom: 0;">
+                    <div class="counter-card">
+                        <div class="counter-label"
+                            style="text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.5px;">Passengers
                         </div>
-                        <div style="font-size: 0.72rem; color: var(--text-muted);">Log hain</div>
+                        <div id="requestPassengers" class="counter-value" style="color: var(--primary);"></div>
                     </div>
-                    <div
-                        style="background: rgba(99,102,241,0.12); border-radius: 8px; padding: 10px; text-align: center;">
-                        <div style="font-size: 1.6rem;">💺</div>
-                        <div id="requestSeatsBadge" style="font-size: 1.3rem; font-weight: 700; color: var(--primary);">
+                    <div class="counter-card">
+                        <div class="counter-label"
+                            style="text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.5px;">Seats Req.
                         </div>
-                        <div style="font-size: 0.72rem; color: var(--text-muted);">Seat chahiye</div>
+                        <div id="requestSeatsBadge" class="counter-value" style="color: var(--primary);"></div>
                     </div>
                 </div>
             </div>
 
             <!-- Selected Seat Numbers -->
             <div id="requestSeatNumbers"
-                style="display: none; background: rgba(99,102,241,0.1); border: 1px solid var(--accent-primary); border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 0.9rem; color: var(--accent-primary); font-weight: 600; text-align: center;">
+                style="display: none; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); border-radius: 12px; padding: 12px; margin-bottom: 16px; font-size: 0.95rem; color: var(--accent-primary); font-family: 'Outfit', sans-serif; font-weight: 600;">
             </div>
 
-            <!-- Available seats in vehicle -->
+            <!-- Available seats warning -->
             <div id="availableSeatsInfo"
-                style="background: rgba(16,185,129,0.1); border: 1px solid var(--success); border-radius: 8px; padding: 10px; margin-bottom: 20px; font-size: 0.9rem; color: var(--success); font-weight: 600;">
+                style="border-radius: 12px; padding: 12px; margin-bottom: 24px; font-size: 0.9rem; font-weight: 600; font-family: 'Inter', sans-serif;">
             </div>
 
-            <div style="display: flex; gap: 12px; justify-content: center;">
-                <button class="btn btn-success" id="acceptRideBtn" style="flex: 1;" onclick="respondToRide(true)">
-                    ✅ Accept
+            <div style="display: flex; gap: 16px; justify-content: center;">
+                <button class="booking-submit-btn" id="acceptRideBtn" style="flex: 1;" onclick="respondToRide(true)">
+                    <div class="booking-btn-content">
+                        <span>✅ Accept</span>
+                    </div>
+                    <div class="booking-btn-shine"></div>
                 </button>
-                <button class="btn btn-danger" id="rejectRideBtn" style="flex: 1;" onclick="respondToRide(false)">
-                    ❌ Reject
+                <button class="booking-submit-btn" id="rejectRideBtn"
+                    style="flex: 1; background: rgba(239, 68, 68, 0.15); color: var(--danger); box-shadow: none;"
+                    onclick="respondToRide(false)">
+                    <div class="booking-btn-content">
+                        <span>❌ Reject</span>
+                    </div>
                 </button>
             </div>
         </div>

@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     driverData = JSON.parse(stored);
     document.getElementById('driverInfo').textContent = `${driverData.name} • ${driverData.vehicle_number}`;
-    
+
     // Display Rating
     if (driverData.total_ratings > 0) {
         const badge = document.getElementById('driverRatingBadge');
@@ -304,8 +304,8 @@ function activateLiveMode() {
     document.getElementById('simulateBtn').disabled = false;
 
     // Disable route form
-    document.getElementById('goLiveBtn').textContent = '✅ Route Active';
-    document.getElementById('goLiveBtn').disabled = true;
+    document.getElementById('goLiveBtn').innerHTML = '🔄 Update Route';
+    document.getElementById('goLiveBtn').disabled = false;
 
     // Fill form with current route data
     document.getElementById('startLocation').value = currentRoute.start_location;
@@ -567,32 +567,247 @@ function updateStats() {
     document.getElementById('totalCount').textContent = currentRoute.total_seats;
 }
 
-// ─── Render Driver Seat Grid ─────────────────────────────────
+// ─── Render Driver Seat Grid (Premium UI) ──────────────────────
 function renderDriverSeatGrid() {
     if (!currentRoute) return;
 
     const container = document.getElementById('driverSeatGrid');
-    const { total_seats, filled_seats } = currentRoute;
 
-    let html = '<div class="seat-grid">';
-    html += `<div class="seat-row"><div class="seat driver">🚗 Driver</div></div>`;
+    // Ensure sizes aren't coerced into strings
+    const total_seats = Number(currentRoute.total_seats);
+    const filled_seats = Number(currentRoute.filled_seats);
 
-    const seatsToShow = Math.min(total_seats, 20);
-    for (let i = 0; i < seatsToShow; i += 2) {
-        html += '<div class="seat-row">';
-        html += `<div class="seat ${i < filled_seats ? 'filled' : 'empty'}">S${i + 1}</div>`;
-        if (i + 1 < seatsToShow) {
-            html += `<div class="seat ${(i + 1) < filled_seats ? 'filled' : 'empty'}">S${i + 2}</div>`;
+    // Read ACTUAL registered vehicle type from session (prevent 10-seat Tuk-Tuks becoming buses)
+    let vehicleType = driverData && driverData.vehicle_type ? driverData.vehicle_type : 'auto';
+
+    container.innerHTML = generateSeatLayout(vehicleType, total_seats, filled_seats, [], true);
+
+    // Attach click listeners to the realistic seats
+    const seats = container.querySelectorAll('.rseat');
+    seats.forEach(seat => {
+        seat.addEventListener('click', () => handleDriverSeatClick(seat));
+    });
+}
+
+function handleDriverSeatClick(seatElement) {
+    if (seatElement.classList.contains('driver')) return; // Can't toggle driver seat
+
+    // If it's empty, we fill it. If it's filled, we empty it.
+    if (seatElement.classList.contains('empty')) {
+        updateSeat('fill', 1);
+    } else if (seatElement.classList.contains('filled')) {
+        updateSeat('empty', 1);
+    }
+}
+
+// ─── Shared Layout Generators (Mirroring user.js) ────────────
+
+function generateSeatLayout(type, total, filled, selectedIds = [], isDriverView = false) {
+    if (type === 'auto') return generateAutoLayout(total, filled, selectedIds, isDriverView);
+    if (type === 'car') return generateCarLayout(total, filled, selectedIds, isDriverView);
+    if (type === 'bus') return generateBusLayout(total, filled, selectedIds, isDriverView);
+    return ''; // fallback
+}
+
+function generateAutoLayout(total, filled, selectedIds, isDriverView) {
+    let frontSeats = '';
+    let middleSeats = '';
+    let backSeats = '';
+    const driverBadge = `<div class="driver-badge-real"><span class="driver-wheel">🛞</span> Driver</div>`;
+
+    let currentSeatNum = 1;
+
+    // Front row (up to 2 seats)
+    for (let i = 0; i < 2 && currentSeatNum <= total; i++) {
+        let state = currentSeatNum <= filled ? 'filled' : 'empty';
+        if (selectedIds.includes(currentSeatNum.toString())) state = 'selected';
+        frontSeats += renderRealisticSeat(currentSeatNum, state);
+        currentSeatNum++;
+    }
+
+    // Middle row - up to 4 seats (Used if total > 6)
+    if (total > 6) {
+        for (let i = 0; i < 4 && currentSeatNum <= total; i++) {
+            let state = currentSeatNum <= filled ? 'filled' : 'empty';
+            if (selectedIds.includes(currentSeatNum.toString())) state = 'selected';
+            middleSeats += renderRealisticSeat(currentSeatNum, state);
+            currentSeatNum++;
         }
-        html += '</div>';
     }
 
-    if (total_seats > 20) {
-        html += `<div style="text-align:center; color: var(--text-muted); font-size: 0.8rem; margin-top: 8px;">+${total_seats - 20} more seats</div>`;
+    // Back row (up to 4 seats)
+    for (let i = 0; i < 4 && currentSeatNum <= total; i++) {
+        let state = currentSeatNum <= filled ? 'filled' : 'empty';
+        if (selectedIds.includes(currentSeatNum.toString())) state = 'selected';
+        backSeats += renderRealisticSeat(currentSeatNum, state);
+        currentSeatNum++;
     }
 
-    html += '</div>';
-    container.innerHTML = html;
+    const isMegaAuto = total > 6;
+    const overlayScale = isMegaAuto ? 'transform: scale(0.85); transform-origin: top center;' : '';
+    const rowGap = isMegaAuto ? '2px' : '6px';
+    const svgScale = isMegaAuto ? 'transform: scaleY(1.1); transform-origin: top center;' : '';
+
+    return `
+        <div class="realistic-vehicle auto-vehicle">
+            <div class="auto-body-wrap">
+                <svg class="auto-svg" viewBox="0 0 260 320" xmlns="http://www.w3.org/2000/svg" style="${svgScale}">
+                    <path d="M40 80 Q 130 10 220 80 L 240 280 C 240 310, 20 310, 20 280 Z" fill="#f59e0b" opacity="0.15" stroke="#d97706" stroke-width="3"/>
+                    <path d="M50 85 Q 130 30 210 85 L 220 140 L 40 140 Z" fill="rgba(0,0,0,0.4)" />
+                    <rect x="110" y="290" width="40" height="20" rx="10" fill="#333"/>
+                    <rect x="10" y="240" width="20" height="40" rx="5" fill="#222"/>
+                    <rect x="230" y="240" width="20" height="40" rx="5" fill="#222"/>
+                    <path d="M80 120 C 130 90, 180 120, 180 120" stroke="#f1f5f9" stroke-width="4" fill="transparent"/>
+                </svg>
+                <div class="auto-driver-area">${driverBadge}</div>
+                <div class="auto-seats-overlay" style="${overlayScale}">
+                    ${frontSeats ? `<div class="auto-seat-row front-row">${frontSeats}</div>` : ''}
+                    ${middleSeats ? `<div class="auto-seat-row middle-row" style="margin-top: ${rowGap}; gap: 6px;">${middleSeats}</div>` : ''}
+                    ${backSeats ? `<div class="auto-seat-row back-row" style="margin-top: ${rowGap}; gap: 6px;">${backSeats}</div>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function generateCarLayout(total, filled, selectedIds, isDriverView) {
+    let seatsHTML = '';
+    const driverBadge = `<div class="driver-badge-real" style="padding: 4px 8px; font-size: 0.65rem;"><span class="driver-wheel">🛞</span></div>`;
+
+    let currentSeatNum = 1;
+
+    // Front passenger seat
+    let frontSeatHTML = '';
+    if (total > 0) {
+        let state = currentSeatNum <= filled ? 'filled' : 'empty';
+        if (selectedIds.includes(currentSeatNum.toString())) state = 'selected';
+        frontSeatHTML = renderRealisticSeat(currentSeatNum, state);
+        currentSeatNum++;
+    }
+
+    // Back seats (up to 3)
+    let backSeatsHTML = '';
+    for (let i = 1; i < total && i < 4; i++) {
+        let state = currentSeatNum <= filled ? 'filled' : 'empty';
+        if (selectedIds.includes(currentSeatNum.toString())) state = 'selected';
+        backSeatsHTML += renderRealisticSeat(currentSeatNum, state);
+        currentSeatNum++;
+    }
+
+    return `
+        <div class="realistic-vehicle car-vehicle">
+            <div class="car-body-wrap">
+                <svg class="car-svg" viewBox="0 0 240 360" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="20" y="20" width="200" height="320" rx="40" fill="#10b981" opacity="0.1" stroke="#059669" stroke-width="2"/>
+                    <path d="M 40 100 C 40 60, 200 60, 200 100 L 210 180 L 30 180 Z" fill="rgba(0,0,0,0.3)"/>
+                    <path d="M 30 190 L 210 190 L 190 280 C 190 300, 50 300, 50 280 Z" fill="rgba(0,0,0,0.3)"/>
+                    <rect x="10" y="60" width="10" height="50" rx="5" fill="#222"/>
+                    <rect x="220" y="60" width="10" height="50" rx="5" fill="#222"/>
+                    <rect x="10" y="250" width="10" height="50" rx="5" fill="#222"/>
+                    <rect x="220" y="250" width="10" height="50" rx="5" fill="#222"/>
+                    <line x1="80" y1="20" x2="160" y2="20" stroke="#059669" stroke-width="4" stroke-linecap="round"/>
+                    <line x1="80" y1="340" x2="160" y2="340" stroke="#ef4444" stroke-width="4" stroke-linecap="round"/>
+                </svg>
+                <div class="car-driver-area">${driverBadge}</div>
+                <div class="car-seats-front">${frontSeatHTML}</div>
+                <div class="car-seats-back">${backSeatsHTML}</div>
+            </div>
+        </div>
+    `;
+}
+
+function generateBusLayout(total, filled, selectedIds, isDriverView) {
+    let rowsHTML = '';
+    let currentSeatNum = 1;
+    const rows = Math.ceil(total / 4);
+
+    for (let r = 0; r < rows; r++) {
+        let leftSeats = '';
+        let rightSeats = '';
+
+        for (let i = 0; i < 2; i++) {
+            if (currentSeatNum <= total) {
+                let state = currentSeatNum <= filled ? 'filled' : 'empty';
+                if (selectedIds.includes(currentSeatNum.toString())) state = 'selected';
+                leftSeats += renderRealisticSeat(currentSeatNum, state);
+                currentSeatNum++;
+            } else {
+                leftSeats += `<div class="rseat" style="opacity:0"></div>`;
+            }
+        }
+
+        for (let i = 0; i < 2; i++) {
+            if (currentSeatNum <= total) {
+                let state = currentSeatNum <= filled ? 'filled' : 'empty';
+                if (selectedIds.includes(currentSeatNum.toString())) state = 'selected';
+                rightSeats += renderRealisticSeat(currentSeatNum, state);
+                currentSeatNum++;
+            } else {
+                rightSeats += `<div class="rseat" style="opacity:0"></div>`;
+            }
+        }
+
+        rowsHTML += `
+            <div class="bus-seat-row">
+                <div class="bus-row-num">${r + 1}</div>
+                <div class="bus-left-pair">${leftSeats}</div>
+                <div class="bus-aisle-gap"></div>
+                <div class="bus-right-pair">${rightSeats}</div>
+            </div>
+        `;
+
+        if (r === Math.floor(rows / 2) - 1) {
+            rowsHTML += `
+                <div class="bus-mid-door">
+                    <span>🚪</span> Exit
+                </div>
+            `;
+        }
+    }
+
+    return `
+        <div class="realistic-vehicle bus-vehicle">
+            <div class="bus-body-wrap">
+                <div class="bus-front">
+                    <div class="bus-windshield">
+                        <span class="bus-front-lights">🔆</span>
+                        <div class="bus-route-display">EYE IN CITY BUS</div>
+                        <span class="bus-front-lights">🔆</span>
+                    </div>
+                    <div class="bus-driver-row">
+                        <div class="driver-badge-real"><span class="driver-wheel">🛞</span> Driver</div>
+                        <div class="bus-entry-door"><span>🚪</span> Entry</div>
+                    </div>
+                </div>
+                
+                <div class="bus-seats-container">
+                    ${rowsHTML}
+                </div>
+
+                <div class="bus-rear">
+                    <div class="bus-rear-window"></div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderRealisticSeat(number, state) {
+    let innerContent = '';
+    if (state === 'empty') innerContent = `<span class="rseat-icon">💺</span>`;
+    if (state === 'filled') innerContent = `<span class="rseat-person">🧑</span>`;
+    if (state === 'selected') innerContent = `<span class="rseat-check">✓</span>`;
+    if (state === 'driver') innerContent = `<span class="rseat-icon">🛞</span>`;
+
+    return `
+        <div class="rseat ${state}" data-seat="${number}">
+            <div class="rseat-backrest"></div>
+            <div class="rseat-cushion">
+                ${innerContent}
+            </div>
+            ${state !== 'driver' ? `<div class="rseat-number">${number}</div>` : ''}
+        </div>
+    `;
 }
 
 // ─── Update Seat ─────────────────────────────────────────────
@@ -871,10 +1086,10 @@ async function openDriverHistory() {
 
         listContainer.innerHTML = rides.map(ride => {
             const date = new Date(ride.created_at).toLocaleDateString();
-            const ratingHtml = ride.rating 
+            const ratingHtml = ride.rating
                 ? `<div style="color: #b45309; font-size: 0.85rem; margin-top: 4px;">⭐ ${ride.rating}/5 ${ride.rating_comment ? `– "${ride.rating_comment}"` : ''}</div>`
                 : `<div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">No rating yet</div>`;
-                
+
             return `
                 <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: var(--surface-light);">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
