@@ -1,99 +1,262 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driver Login – Eye In</title>
-    <link rel="stylesheet" href="/css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driver Login – Eye In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0a0e17; overflow: hidden; }
+
+    /* Background blobs */
+    .bg-blob { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; }
+    .blob1 { width: 500px; height: 500px; background: rgba(99,102,241,0.12); top: -150px; right: -150px; animation: blobFloat 18s ease-in-out infinite; }
+    .blob2 { width: 400px; height: 400px; background: rgba(16,185,129,0.08); bottom: -100px; left: -100px; animation: blobFloat 22s ease-in-out infinite reverse; }
+    @keyframes blobFloat {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%  { transform: translate(20px,-20px) scale(1.05); }
+      66%  { transform: translate(-15px,15px) scale(0.95); }
+    }
+
+    /* Main card */
+    .login-card {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 440px;
+      background: rgba(17,24,39,0.9);
+      backdrop-filter: blur(30px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px;
+      padding: 44px 40px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+      animation: cardUp 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+      margin: 16px;
+    }
+    @keyframes cardUp {
+      from { opacity:0; transform: translateY(40px) scale(0.97); }
+      to   { opacity:1; transform: translateY(0) scale(1); }
+    }
+    .card-top-bar {
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6, #10b981);
+      border-radius: 24px 24px 0 0;
+    }
+
+    /* Logo */
+    .login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+    .login-logo-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+    }
+    .login-logo-text { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, #6366f1, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .login-logo-sub { font-size: 0.75rem; color: #64748b; font-weight: 500; }
+
+    /* Heading */
+    .login-heading { margin-bottom: 28px; }
+    .login-heading h1 { font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 700; color: #f1f5f9; margin-bottom: 6px; }
+    .login-heading p { font-size: 0.9rem; color: #64748b; }
+
+    /* Form fields */
+    .field-group { margin-bottom: 18px; }
+    .field-label { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: #64748b; margin-bottom: 8px; }
+    .field-wrap {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1.5px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 13px 16px;
+      transition: all 0.2s ease;
+    }
+    .field-wrap:focus-within {
+      border-color: rgba(99,102,241,0.5);
+      background: rgba(99,102,241,0.05);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .field-icon { font-size: 1.05rem; flex-shrink: 0; }
+    .field-input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: #f1f5f9; font-family: 'Inter', sans-serif;
+      font-size: 0.95rem; font-weight: 500;
+    }
+    .field-input::placeholder { color: #475569; font-weight: 400; }
+    .toggle-pass { background: none; border: none; color: #64748b; cursor: pointer; font-size: 1rem; padding: 0; transition: color 0.2s; }
+    .toggle-pass:hover { color: #a78bfa; }
+
+    /* Submit btn */
+    .submit-btn {
+      width: 100%; padding: 15px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border: none; border-radius: 12px;
+      color: white; font-family: 'Inter', sans-serif;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.25s ease;
+      box-shadow: 0 6px 24px rgba(99,102,241,0.35);
+      margin-top: 8px; margin-bottom: 20px;
+      position: relative; overflow: hidden;
+    }
+    .submit-btn::before {
+      content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+      transition: left 0.5s ease;
+    }
+    .submit-btn:hover::before { left: 100%; }
+    .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(99,102,241,0.45); }
+    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* Divider */
+    .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+    .divider-line { flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
+    .divider-text { font-size: 0.78rem; color: #475569; }
+
+    /* Links */
+    .login-links { text-align: center; }
+    .login-links p { font-size: 0.88rem; color: #64748b; margin-bottom: 8px; }
+    .login-links a { color: #a78bfa; text-decoration: none; font-weight: 600; }
+    .login-links a:hover { color: #c4b5fd; }
+    .back-home { display: inline-flex; align-items: center; gap: 5px; font-size: 0.82rem; color: #475569; text-decoration: none; transition: color 0.2s; }
+    .back-home:hover { color: #94a3b8; }
+
+    /* Error */
+    .error-box {
+      display: none; margin-top: 14px; padding: 12px 16px;
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 10px; color: #fca5a5; font-size: 0.85rem;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .error-box.hidden { display: none; }
+
+    /* Spinner */
+    .spin { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Demo badge */
+    .demo-hint {
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 0.8rem; color: #94a3b8;
+      margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+    }
+  </style>
 </head>
-
 <body>
-    <div class="split-layout">
-        <!-- Left: Branding -->
-        <div class="split-brand">
-            <div class="split-brand-content">
-                <div class="brand-icon">🚗</div>
-                <h1>Eye In</h1>
-                <p>Driver Portal — Set your route, fare, and manage seats in real-time.</p>
-            </div>
-        </div>
+  <div class="bg-blob blob1"></div>
+  <div class="bg-blob blob2"></div>
 
-        <!-- Right: Login Form -->
-        <div class="split-form">
-            <div class="form-wrapper">
-                <h2>Driver Login</h2>
-                <p class="form-subtitle">Sign in to your driver account</p>
+  <div class="login-card">
+    <div class="card-top-bar"></div>
 
-                <form id="loginForm" onsubmit="handleLogin(event)">
-                    <div class="form-group">
-                        <label>📱 Mobile Number</label>
-                        <input type="tel" class="form-control" id="phoneInput" placeholder="Enter mobile number"
-                            value="9876543210" required>
-                    </div>
-                    <div class="form-group">
-                        <label>🔒 Password</label>
-                        <input type="password" class="form-control" id="passwordInput" placeholder="Enter password"
-                            value="driver123" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginBtn">
-                        Sign In →
-                    </button>
-                </form>
-
-                <div style="text-align: center; margin-top: 24px;">
-                    <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 8px;">
-                        Don't have an account? <a href="/driver-register.html"
-                            style="color: var(--primary); font-weight: 500; text-decoration: none;">Register here</a>
-                    </p>
-                    <a href="/" style="color: var(--text-muted); text-decoration: none; font-size: 0.85rem;">← Back to
-                        Home</a>
-                </div>
-
-                <div id="loginError"
-                    style="display: none; margin-top: 16px; padding: 12px; background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-sm); color: var(--danger); font-size: 0.85rem;">
-                </div>
-            </div>
-        </div>
+    <!-- Logo -->
+    <div class="login-logo">
+      <div class="login-logo-icon">👁️</div>
+      <div>
+        <div class="login-logo-text">Eye In</div>
+        <div class="login-logo-sub">Driver Portal</div>
+      </div>
     </div>
 
-    <script>
-        async function handleLogin(e) {
-            e.preventDefault();
-            const phone = document.getElementById('phoneInput').value.trim();
-            const password = document.getElementById('passwordInput').value;
-            const errorDiv = document.getElementById('loginError');
-            const btn = document.getElementById('loginBtn');
+    <!-- Heading -->
+    <div class="login-heading">
+      <h1>Welcome back 👋</h1>
+      <p>Apne driver account mein sign in karein</p>
+    </div>
 
-            btn.textContent = 'Signing in...';
-            btn.disabled = true;
-            errorDiv.style.display = 'none';
+    <!-- Demo hint -->
+    <div class="demo-hint">
+      💡 Demo: <strong style="color:#a78bfa">9876543210</strong> / <strong style="color:#a78bfa">driver123</strong>
+    </div>
 
-            try {
-                const res = await fetch('/api/auth/driver-login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, password })
-                });
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <!-- Phone -->
+      <div class="field-group">
+        <div class="field-label"><span>📱</span> Mobile Number</div>
+        <div class="field-wrap">
+          <span class="field-icon">🇮🇳</span>
+          <input type="tel" class="field-input" id="phoneInput" placeholder="10-digit mobile number" value="9876543210" required maxlength="10">
+        </div>
+      </div>
 
-                const data = await res.json();
+      <!-- Password -->
+      <div class="field-group">
+        <div class="field-label"><span>🔒</span> Password</div>
+        <div class="field-wrap">
+          <span class="field-icon">🔑</span>
+          <input type="password" class="field-input" id="passwordInput" placeholder="Apna password daalen" value="driver123" required>
+          <button type="button" class="toggle-pass" onclick="togglePassword()" id="toggleBtn">👁️</button>
+        </div>
+      </div>
 
-                if (!res.ok) {
-                    throw new Error(data.error || 'Login failed');
-                }
+      <button type="submit" class="submit-btn" id="loginBtn">
+        <span id="loginBtnText">Sign In</span>
+        <span>→</span>
+      </button>
+    </form>
 
-                localStorage.setItem('driverToken', data.token);
-                localStorage.setItem('driverData', JSON.stringify(data.driver));
-                window.location.href = '/driver-dashboard.html';
+    <!-- Error -->
+    <div class="error-box hidden" id="loginError">
+      <span>❌</span>
+      <span id="errorText"></span>
+    </div>
 
-            } catch (err) {
-                errorDiv.textContent = err.message;
-                errorDiv.style.display = 'block';
-                btn.textContent = 'Sign In →';
-                btn.disabled = false;
-            }
-        }
-    </script>
+    <div class="login-links">
+      <p>Account nahi hai? <a href="/driver-register.html">Register karein →</a></p>
+      <a href="/" class="back-home">← Wapas Home</a>
+    </div>
+  </div>
+
+  <script>
+    function togglePassword() {
+      const input = document.getElementById('passwordInput');
+      const btn = document.getElementById('toggleBtn');
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const phone = document.getElementById('phoneInput').value.trim();
+      const password = document.getElementById('passwordInput').value;
+      const errorDiv = document.getElementById('loginError');
+      const errorText = document.getElementById('errorText');
+      const btn = document.getElementById('loginBtn');
+      const btnText = document.getElementById('loginBtnText');
+
+      btnText.innerHTML = '<span class="spin"></span>';
+      btn.disabled = true;
+      errorDiv.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/auth/driver-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+
+        localStorage.setItem('driverToken', data.token);
+        localStorage.setItem('driverData', JSON.stringify(data.driver));
+
+        btnText.textContent = '✅ Redirecting...';
+        setTimeout(() => { window.location.href = '/driver-dashboard.html'; }, 500);
+      } catch (err) {
+        errorText.textContent = err.message;
+        errorDiv.classList.remove('hidden');
+        btnText.textContent = 'Sign In';
+        btn.disabled = false;
+      }
+    }
+  </script>
 </body>
-
 </html>

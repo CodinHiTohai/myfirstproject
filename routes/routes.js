@@ -326,4 +326,53 @@ router.post('/ride-history/:id/rate', async (req, res) => {
     }
 });
 
+// ─── GET /driver/:id/profile ──────────────────────────────────────────────────
+// Returns a driver's profile: info, ratings summary, and their last 5 reviews.
+router.get('/driver/:id/profile', async (req, res) => {
+    const db = req.app.get('db');
+    const driverId = parseInt(req.params.id);
+
+    try {
+        // Get driver info
+        const [drivers] = await db.query(
+            `SELECT id, name, phone, vehicle_number, vehicle_type,
+                    avg_rating, total_ratings, created_at,
+                    COALESCE(status, 'active') AS status
+             FROM drivers WHERE id = ?`,
+            [driverId]
+        );
+
+        if (drivers.length === 0) {
+            return res.status(404).json({ error: 'Driver not found.' });
+        }
+
+        const driver = drivers[0];
+
+        // Total rides completed by this driver
+        const [[{ total_rides }]] = await db.query(
+            'SELECT COUNT(*) AS total_rides FROM ride_history WHERE driver_id = ?',
+            [driverId]
+        );
+
+        // Last 5 reviews with a rating comment
+        const [recent_reviews] = await db.query(
+            `SELECT id, passenger_name, rating, rating_comment, created_at
+             FROM ride_history
+             WHERE driver_id = ? AND rating IS NOT NULL
+             ORDER BY created_at DESC
+             LIMIT 5`,
+            [driverId]
+        );
+
+        res.json({
+            ...driver,
+            total_rides,
+            recent_reviews
+        });
+    } catch (error) {
+        console.error('Driver profile error:', error);
+        res.status(500).json({ error: 'Database error retrieving driver profile.' });
+    }
+});
+
 module.exports = router;

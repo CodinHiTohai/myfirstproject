@@ -31,18 +31,89 @@ const pool = mysql.createPool({
     }
 });
 
-// Test connection
+// Test connection & run schema migrations
 pool.getConnection()
     .then(async conn => {
         console.log('✅ Connected to MySQL Database');
+
+        // Migration 1: stops column on routes
         try {
             await conn.query('ALTER TABLE routes ADD COLUMN stops VARCHAR(500) DEFAULT NULL');
             console.log('✅ Schema migrated: stops column added');
         } catch (err) {
             if (err.code !== 'ER_DUP_FIELDNAME') {
-                console.log('Schema migration notice:', err.message);
+                console.log('Schema migration notice (stops):', err.message);
             }
         }
+
+        // Migration 2: status column on drivers
+        try {
+            await conn.query("ALTER TABLE drivers ADD COLUMN status ENUM('active','blocked') DEFAULT 'active'");
+            console.log('✅ Schema migrated: drivers.status column added');
+        } catch (err) {
+            if (err.code !== 'ER_DUP_FIELDNAME') {
+                console.log('Schema migration notice (drivers.status):', err.message);
+            }
+        }
+
+        // Migration 3: avg_rating column on drivers
+        try {
+            await conn.query('ALTER TABLE drivers ADD COLUMN avg_rating DECIMAL(3,1) DEFAULT 0');
+            console.log('✅ Schema migrated: drivers.avg_rating column added');
+        } catch (err) {
+            if (err.code !== 'ER_DUP_FIELDNAME') {
+                console.log('Schema migration notice (drivers.avg_rating):', err.message);
+            }
+        }
+
+        // Migration 4: total_ratings column on drivers
+        try {
+            await conn.query('ALTER TABLE drivers ADD COLUMN total_ratings INT DEFAULT 0');
+            console.log('✅ Schema migrated: drivers.total_ratings column added');
+        } catch (err) {
+            if (err.code !== 'ER_DUP_FIELDNAME') {
+                console.log('Schema migration notice (drivers.total_ratings):', err.message);
+            }
+        }
+
+        // Migration 5: feedback table
+        try {
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS feedback (
+                    id          INT AUTO_INCREMENT PRIMARY KEY,
+                    name        VARCHAR(100),
+                    phone       VARCHAR(15),
+                    message     TEXT NOT NULL,
+                    type        ENUM('bug','suggestion','complaint','praise') DEFAULT 'suggestion',
+                    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ Schema migrated: feedback table ready');
+        } catch (err) {
+            if (err.code !== 'ER_TABLE_EXISTS_ERROR') {
+                console.log('Schema migration notice (feedback):', err.message);
+            }
+        }
+
+        // Migration 6: otp_verifications table
+        try {
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS otp_verifications (
+                    id          INT AUTO_INCREMENT PRIMARY KEY,
+                    phone       VARCHAR(15) NOT NULL,
+                    otp         VARCHAR(6) NOT NULL,
+                    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at  TIMESTAMP,
+                    verified    TINYINT(1) DEFAULT 0
+                )
+            `);
+            console.log('✅ Schema migrated: otp_verifications table ready');
+        } catch (err) {
+            if (err.code !== 'ER_TABLE_EXISTS_ERROR') {
+                console.log('Schema migration notice (otp_verifications):', err.message);
+            }
+        }
+
         conn.release();
     })
     .catch(err => {
@@ -54,13 +125,39 @@ app.set('io', io);
 app.set('db', pool);
 
 // ─── API Routes ──────────────────────────────────────────────────
-const authRoutes = require('./routes/auth');
-const routeRoutes = require('./routes/routes');
-const adminRoutes = require('./routes/admin');
+const authRoutes    = require('./routes/auth');
+const routeRoutes   = require('./routes/routes');
+const adminRoutes   = require('./routes/admin');
+const feedbackRoutes = require('./routes/feedback');
+const otpRoutes     = require('./routes/otp');
 
-app.use('/api/auth', authRoutes);
-app.use('/api/routes', routeRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/auth',     authRoutes);
+app.use('/api/routes',   routeRoutes);
+app.use('/api/admin',    adminRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/otp',      otpRoutes);
+
+// ─── GET /api/user-rides?phone=X ─────────────────────────────────
+// Returns up to 20 most recent rides for a passenger phone number.
+app.get('/api/user-rides', async (req, res) => {
+    const db = req.app.get('db');
+    const { phone } = req.query;
+
+    if (!phone) {
+        return res.status(400).json({ error: 'Phone query parameter is required.' });
+    }
+
+    try {
+        const [rides] = await pool.query(
+            'SELECT * FROM ride_history WHERE passenger_phone = ? ORDER BY created_at DESC LIMIT 20',
+            [phone]
+        );
+        res.json({ rides });
+    } catch (error) {
+        console.error('User rides error:', error);
+        res.status(500).json({ error: 'Database error fetching rides.' });
+    }
+});
 
 // ─── Socket.io ─────────────────────────────────────────────────
 io.on('connection', (socket) => {

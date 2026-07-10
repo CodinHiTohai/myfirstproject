@@ -1,316 +1,1154 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driver Dashboard – Eye In</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="/css/style.css">
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#3b82f6">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driver Dashboard – Eye In</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0a0e17">
+
+  <style>
+    /* ── Layout ─────────────────────────────────────────────── */
+    body { background: #0a0e17; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      height: 100vh;
+      padding-top: 64px;
+    }
+
+    /* ── Navbar ─────────────────────────────────────────────── */
+    .dash-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px;
+      background: rgba(10,14,23,0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .dash-nav-left { display: flex; align-items: center; gap: 14px; }
+    .dash-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+    .dash-logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg,#6366f1,#8b5cf6); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+    .dash-logo-text { font-family:'Outfit',sans-serif; font-size: 1.2rem; font-weight: 700; background: linear-gradient(135deg,#6366f1,#a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .driver-pill {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; padding: 5px 12px;
+    }
+    .driver-avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg,#6366f1,#8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
+    .driver-name-pill { font-size: 0.82rem; font-weight: 600; color: #e2e8f0; }
+    .driver-vehicle-pill { font-size: 0.72rem; color: #64748b; }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 20px;
+      font-size: 0.78rem; font-weight: 600;
+      border: 1px solid; transition: all 0.3s ease;
+    }
+    .status-pill.offline { background: rgba(100,116,139,0.1); border-color: rgba(100,116,139,0.3); color: #64748b; }
+    .status-pill.live { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #10b981; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .status-pill.live .status-dot { animation: liveBlink 1.2s ease-in-out infinite; }
+    @keyframes liveBlink { 0%,100%{opacity:1;box-shadow:0 0 0 0 currentColor} 50%{opacity:0.7;box-shadow:0 0 0 4px transparent} }
+
+    .dash-nav-right { display: flex; align-items: center; gap: 8px; }
+    .nav-action-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 12px; border-radius: 8px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+      color: #94a3b8; font-size: 0.82rem; font-weight: 500; font-family:'Inter',sans-serif;
+      cursor: pointer; text-decoration: none; transition: all 0.2s;
+    }
+    .nav-action-btn:hover { background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.3); color: #a78bfa; }
+    .nav-action-btn.danger:hover { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #ef4444; }
+
+    /* ── Left Panel ─────────────────────────────────────────── */
+    .left-panel {
+      background: #0d1117;
+      border-right: 1px solid rgba(255,255,255,0.06);
+      overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .left-panel::-webkit-scrollbar { width: 4px; }
+    .left-panel::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 2px; }
+
+    /* ── Stats Bar ──────────────────────────────────────────── */
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .stat-tile {
+      padding: 14px 12px; text-align: center;
+      border-right: 1px solid rgba(255,255,255,0.06);
+      transition: background 0.2s;
+    }
+    .stat-tile:last-child { border-right: none; }
+    .stat-tile:hover { background: rgba(255,255,255,0.02); }
+    .stat-tile-val { font-family:'Outfit',sans-serif; font-size: 1.4rem; font-weight: 700; line-height: 1; }
+    .stat-tile-val.green { color: #10b981; }
+    .stat-tile-val.orange { color: #f59e0b; }
+    .stat-tile-val.purple { color: #a78bfa; }
+    .stat-tile-val.blue { color: #60a5fa; }
+    .stat-tile-label { font-size: 0.67rem; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
+
+    /* ── Section Card ───────────────────────────────────────── */
+    .panel-section {
+      margin: 14px; background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06); border-radius: 14px;
+      overflow: hidden;
+    }
+    .panel-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+    }
+    .panel-section-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.88rem; font-weight: 600; color: #e2e8f0;
+    }
+    .panel-section-body { padding: 14px 16px; }
+
+    /* Saved prefs badge */
+    .saved-badge {
+      display: none; align-items: center; gap: 5px;
+      background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 12px; padding: 3px 10px;
+      font-size: 0.72rem; color: #a78bfa; font-weight: 600;
+    }
+
+    /* ── Form Styles ────────────────────────────────────────── */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field-grp { margin-bottom: 12px; }
+    .field-lbl { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; margin-bottom: 6px; display: block; }
+    .field-inp {
+      width: 100%; background: rgba(0,0,0,0.3);
+      border: 1.5px solid rgba(255,255,255,0.07);
+      border-radius: 10px; padding: 10px 12px;
+      color: #f1f5f9; font-family:'Inter',sans-serif; font-size: 0.88rem;
+      outline: none; transition: all 0.2s;
+    }
+    .field-inp:focus { border-color: rgba(99,102,241,0.5); background: rgba(99,102,241,0.04); box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+    .field-inp::placeholder { color: #334155; }
+    .autocomplete-wrapper { position: relative; }
+
+    /* Map in route setup */
+    #setupMap { height: 180px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); z-index: 1; margin-bottom: 12px; }
+    .map-tip { font-size: 0.75rem; color: #475569; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+
+    /* Buttons */
+    .btn-go-live {
+      width: 100%; padding: 13px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none; border-radius: 11px;
+      color: white; font-family:'Inter',sans-serif;
+      font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.25s; box-shadow: 0 4px 16px rgba(16,185,129,0.3);
+      margin-top: 4px;
+    }
+    .btn-go-live:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16,185,129,0.4); }
+    .btn-go-live:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .btn-sm-outline {
+      padding: 8px; border-radius: 9px;
+      background: transparent; font-family:'Inter',sans-serif;
+      font-size: 0.78rem; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .btn-sm-save { border: 1px solid rgba(99,102,241,0.4); color: #a78bfa; }
+    .btn-sm-save:hover { background: rgba(99,102,241,0.1); }
+    .btn-sm-clear { border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+    .btn-sm-clear:hover { background: rgba(239,68,68,0.08); }
+
+    /* ── Seat Control ───────────────────────────────────────── */
+    .seat-display-bar {
+      display: flex; align-items: center; justify-content: center; gap: 0;
+      background: rgba(0,0,0,0.3); border-radius: 12px; padding: 14px;
+      margin-bottom: 14px;
+    }
+    .seat-count-big { font-family:'Outfit',sans-serif; font-size: 2.8rem; font-weight: 800; }
+    .seat-count-big .filled { color: #ef4444; }
+    .seat-count-big .slash { color: #334155; margin: 0 4px; }
+    .seat-count-big .total { color: #94a3b8; }
+    .seat-count-label { font-size: 0.72rem; color: #475569; text-align: center; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .seat-ctrl-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .btn-fill {
+      padding: 12px; border-radius: 11px; border: none;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white; font-family:'Inter',sans-serif;
+      font-size: 0.88rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s; box-shadow: 0 4px 12px rgba(239,68,68,0.25);
+    }
+    .btn-fill:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(239,68,68,0.35); }
+    .btn-empty {
+      padding: 12px; border-radius: 11px; border: none;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white; font-family:'Inter',sans-serif;
+      font-size: 0.88rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s; box-shadow: 0 4px 12px rgba(16,185,129,0.25);
+    }
+    .btn-empty:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16,185,129,0.35); }
+    .btn-fill:disabled, .btn-empty:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .bottom-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn-end-ride {
+      padding: 10px; border-radius: 10px;
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3);
+      color: #ef4444; font-family:'Inter',sans-serif; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: all 0.2s;
+    }
+    .btn-end-ride:hover { background: rgba(239,68,68,0.15); }
+    .btn-simulate {
+      padding: 10px; border-radius: 10px;
+      background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.3);
+      color: #a78bfa; font-family:'Inter',sans-serif; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: all 0.2s;
+    }
+    .btn-simulate:hover { background: rgba(99,102,241,0.15); }
+    .btn-end-ride:disabled, .btn-simulate:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ── Passenger Queue ────────────────────────────────────── */
+    .passenger-queue { padding: 0 14px 14px; }
+    .queue-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px; padding: 10px 0 0;
+    }
+    .queue-title { display: flex; align-items: center; gap: 7px; font-size: 0.85rem; font-weight: 600; color: #94a3b8; }
+    .queue-badge {
+      background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.3);
+      color: #a78bfa; border-radius: 8px; padding: 2px 8px;
+      font-size: 0.72rem; font-weight: 700;
+    }
+    .queue-empty { text-align: center; padding: 20px 0; color: #334155; font-size: 0.82rem; }
+
+    .passenger-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; padding: 12px 14px;
+      margin-bottom: 8px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .passenger-card:hover { border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.04); }
+    .passenger-card.pending { border-left: 3px solid #f59e0b; }
+    .passenger-card.accepted { border-left: 3px solid #10b981; }
+    .pcard-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+    .pcard-name { font-size: 0.88rem; font-weight: 600; color: #e2e8f0; display: flex; align-items: center; gap: 6px; }
+    .pcard-phone { font-size: 0.78rem; color: #64748b; }
+    .pcard-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .pcard-chip {
+      padding: 2px 8px; border-radius: 8px; font-size: 0.72rem; font-weight: 600;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: #94a3b8;
+    }
+    .pcard-chip.seats { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.25); color: #a78bfa; }
+    .pcard-chip.pending { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.25); color: #fbbf24; }
+    .pcard-chip.accepted { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.25); color: #34d399; }
+    .pcard-locate-btn {
+      padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 600;
+      background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25);
+      color: #60a5fa; cursor: pointer; transition: all 0.15s;
+    }
+    .pcard-locate-btn:hover { background: rgba(59,130,246,0.2); }
+
+    /* ── Right Panel: Map ───────────────────────────────────── */
+    .map-panel { position: relative; background: #0a0e17; }
+    #driverMap { width: 100%; height: 100%; min-height: calc(100vh - 64px); }
+
+    /* Map Overlays */
+    .map-overlay-topbar {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 400; display: flex; gap: 8px; align-items: center;
+      background: rgba(10,14,23,0.9); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 20px;
+      padding: 8px 14px; white-space: nowrap;
+    }
+    .route-display { font-size: 0.82rem; font-weight: 600; color: #e2e8f0; }
+    .route-sep { color: #334155; }
+
+    .map-legend {
+      position: absolute; bottom: 20px; left: 14px; z-index: 400;
+      background: rgba(10,14,23,0.9); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+      padding: 10px 14px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 7px; font-size: 0.75rem; color: #94a3b8; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    .gps-badge {
+      position: absolute; bottom: 20px; right: 14px; z-index: 400;
+      display: none; align-items: center; gap: 8px;
+      background: rgba(16,185,129,0.9); backdrop-filter: blur(10px);
+      border-radius: 20px; padding: 8px 14px;
+      color: white; font-size: 0.82rem; font-weight: 600;
+    }
+    .gps-dot { width: 8px; height: 8px; border-radius: 50%; background: white; animation: liveBlink 1.2s infinite; }
+
+    /* ── RIDE REQUEST MODAL ─────────────────────────────────── */
+    .rr-overlay {
+      position: fixed; inset: 0; z-index: 2000;
+      display: none; align-items: flex-end; justify-content: center;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+    }
+    .rr-overlay.open { display: flex; }
+
+    .rr-sheet {
+      width: 100%; max-width: 520px; margin: 0 auto;
+      background: #111827;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px 24px 0 0;
+      padding: 0 0 24px;
+      animation: sheetUp 0.4s cubic-bezier(0.34,1.2,0.64,1) both;
+      position: relative; overflow: hidden;
+    }
+    @keyframes sheetUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
+
+    /* Countdown bar at top */
+    .rr-countdown-bar {
+      height: 4px;
+      background: linear-gradient(90deg, #6366f1, #10b981);
+      transform-origin: left;
+      animation: countdownShrink 20s linear forwards;
+      border-radius: 4px 4px 0 0;
+    }
+    @keyframes countdownShrink { from{transform:scaleX(1)} to{transform:scaleX(0)} }
+
+    .rr-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; margin: 12px auto 0; }
+
+    .rr-top {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 24px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .rr-ring {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(245,158,11,0.15); border: 2px solid rgba(245,158,11,0.4);
+      display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+      animation: ringPulse 1.5s ease-in-out infinite; flex-shrink: 0;
+    }
+    @keyframes ringPulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.4)} 50%{box-shadow:0 0 0 12px rgba(245,158,11,0)} }
+    .rr-heading h2 { font-family:'Outfit',sans-serif; font-size: 1.3rem; font-weight: 700; margin-bottom: 2px; }
+    .rr-heading p { font-size: 0.82rem; color: #64748b; }
+    .rr-timer-badge {
+      margin-left: auto; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);
+      border-radius: 10px; padding: 4px 10px; font-size: 0.82rem; font-weight: 700; color: #fbbf24;
+      display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+    }
+
+    .rr-body { padding: 16px 24px; }
+
+    /* Passenger info block */
+    .rr-passenger-block {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    }
+    .rr-info-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .rr-info-row:last-child { margin-bottom: 0; }
+    .rr-info-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .rr-info-lbl { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; margin-bottom: 1px; }
+    .rr-info-val { font-size: 1rem; font-weight: 600; color: #f1f5f9; font-family:'Outfit',sans-serif; }
+    .rr-info-val.phone { font-size: 0.9rem; letter-spacing: 0.5px; }
+
+    /* Stats row in modal */
+    .rr-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px; }
+    .rr-stat-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px; padding: 10px; text-align: center;
+    }
+    .rr-stat-val { font-family:'Outfit',sans-serif; font-size: 1.4rem; font-weight: 700; color: #a78bfa; }
+    .rr-stat-lbl { font-size: 0.68rem; color: #475569; text-transform: uppercase; margin-top: 2px; }
+
+    /* Seat numbers */
+    .rr-seat-numbers {
+      background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
+      font-size: 0.88rem; color: #a78bfa; font-weight: 600;
+      display: none;
+    }
+
+    /* Availability bar */
+    .rr-avail {
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 16px;
+      font-size: 0.88rem; font-weight: 600; display: flex; align-items: center; gap: 8px;
+    }
+    .rr-avail.ok { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); color: #34d399; }
+    .rr-avail.warn { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; }
+
+    /* Action buttons */
+    .rr-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .rr-btn-accept {
+      padding: 14px; border-radius: 12px; border: none;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white; font-family:'Inter',sans-serif;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.25s; box-shadow: 0 4px 16px rgba(16,185,129,0.3);
+    }
+    .rr-btn-accept:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16,185,129,0.4); }
+    .rr-btn-reject {
+      padding: 14px; border-radius: 12px;
+      background: rgba(239,68,68,0.08); border: 1.5px solid rgba(239,68,68,0.3);
+      color: #ef4444; font-family:'Inter',sans-serif;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.25s;
+    }
+    .rr-btn-reject:hover { background: rgba(239,68,68,0.15); }
+
+    /* ── History Modal ──────────────────────────────────────── */
+    .history-overlay {
+      position: fixed; inset: 0; z-index: 2000;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(10px);
+    }
+    .history-overlay.open { display: flex; }
+    .history-card {
+      background: #111827; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px; width: 90%; max-width: 440px; max-height: 88vh;
+      padding: 24px; position: relative; overflow: hidden;
+      animation: slideUp 0.35s cubic-bezier(0.34,1.2,0.64,1) both;
+    }
+    @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+    .history-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .history-title { font-family:'Outfit',sans-serif; font-size: 1.2rem; font-weight: 700; }
+    .close-btn { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #64748b; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .close-btn:hover { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #ef4444; }
+    .history-list { max-height: 60vh; overflow-y: auto; }
+
+    .history-ride-item {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+    }
+    .history-ride-route { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .history-ride-meta { display: flex; justify-content: space-between; font-size: 0.78rem; color: #64748b; }
+    .history-ride-rating { color: #f59e0b; font-size: 0.8rem; margin-top: 4px; }
+
+    /* ── Leaflet Custom Markers ─────────────────────────────── */
+    .marker-driver-wrap { position: relative; }
+    .marker-driver { width: 40px; height: 40px; border-radius: 50%; background: rgba(99,102,241,0.9); border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(99,102,241,0.5); }
+    .marker-passenger { width: 36px; height: 36px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.4); animation: passengerPop 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+    @keyframes passengerPop { from{transform:scale(0)} to{transform:scale(1)} }
+    .marker-pending { background: rgba(245,158,11,0.9); animation: passengerPop 0.4s cubic-bezier(0.34,1.56,0.64,1), pendingPulse 2s ease-in-out infinite; }
+    .marker-accepted { background: rgba(16,185,129,0.9); }
+    @keyframes pendingPulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.5)} 50%{box-shadow:0 0 0 10px rgba(245,158,11,0)} }
+
+    .marker-label {
+      position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+      font-size: 0.65rem; font-weight: 700; white-space: nowrap;
+      background: rgba(10,14,23,0.9); padding: 2px 6px; border-radius: 6px; color: #f1f5f9;
+    }
+
+    /* ── Popup Styles ───────────────────────────────────────── */
+    .leaflet-popup-content-wrapper {
+      background: #1a2035 !important; border: 1px solid rgba(255,255,255,0.1) !important;
+      border-radius: 10px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+      color: #f1f5f9 !important;
+    }
+    .leaflet-popup-tip { background: #1a2035 !important; }
+    .leaflet-popup-content { font-size: 0.82rem; margin: 10px 14px !important; color: #e2e8f0; }
+    .pop-name { font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; }
+    .pop-info { color: #94a3b8; font-size: 0.78rem; }
+
+    /* ── CSS Variable Bridge ────────────────────────────────────── */
+    :root {
+      --accent-primary: #6366f1;
+      --accent-glow: rgba(99,102,241,0.35);
+      --success: #10b981;
+      --danger: #ef4444;
+      --text-muted: #64748b;
+    }
+
+    /* ── Seat Grid Container ────────────────────────────────────── */
+    #driverSeatGrid {
+      overflow-y: auto;
+      max-height: 380px;
+      min-height: 60px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(99,102,241,0.3) transparent;
+    }
+    #driverSeatGrid::-webkit-scrollbar { width: 4px; }
+    #driverSeatGrid::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 2px; }
+
+    /* Vehicle wrapper fills container */
+    #driverSeatGrid .realistic-vehicle {
+      display: flex;
+      justify-content: center;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* ── Auto Layout in driver view ─────────────────────────────── */
+    #driverSeatGrid .auto-body-wrap,
+    #driverSeatGrid .car-body-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      min-height: 260px;
+    }
+    #driverSeatGrid .auto-svg { width: 170px; height: auto; opacity: 0.85; }
+    #driverSeatGrid .car-svg  { width: 170px; height: auto; opacity: 0.85; }
+
+    #driverSeatGrid .auto-driver-area {
+      position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 5;
+    }
+    #driverSeatGrid .car-driver-area {
+      position: absolute; top: 14px; left: 22%; z-index: 5;
+    }
+    #driverSeatGrid .auto-seats-overlay {
+      position: absolute; top: 46%; left: 50%; transform: translateX(-50%);
+      z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 5px;
+    }
+    #driverSeatGrid .auto-seat-row { display: flex; gap: 6px; justify-content: center; }
+    #driverSeatGrid .car-seats-front {
+      position: absolute; top: 28%; right: 12%; z-index: 5;
+    }
+    #driverSeatGrid .car-seats-back {
+      position: absolute; top: 52%; left: 50%; transform: translateX(-50%);
+      z-index: 5; display: flex; gap: 6px;
+    }
+
+    /* ── Bus Layout in driver view ──────────────────────────────── */
+    #driverSeatGrid .bus-body-wrap {
+      display: flex; flex-direction: column; width: 100%;
+    }
+    #driverSeatGrid .bus-front {
+      background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.12);
+      border-radius: 10px 10px 0 0; padding: 8px 12px; margin-bottom: 2px;
+    }
+    #driverSeatGrid .bus-windshield {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px; padding: 5px 8px;
+      background: rgba(0,0,0,0.2); border-radius: 6px;
+      font-size: 0.7rem; color: #64748b;
+    }
+    #driverSeatGrid .bus-route-display { font-size: 0.7rem; font-weight: 700; color: #94a3b8; }
+    #driverSeatGrid .bus-driver-row { display: flex; align-items: center; justify-content: space-between; }
+    #driverSeatGrid .bus-entry-door { font-size: 0.7rem; color: #64748b; display: flex; align-items: center; gap: 3px; }
+    #driverSeatGrid .bus-seats-container { width: 100%; }
+    #driverSeatGrid .bus-seat-row {
+      display: flex; align-items: center; gap: 4px;
+      padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    #driverSeatGrid .bus-row-num { font-size: 0.6rem; color: #334155; font-weight: 700; min-width: 14px; text-align: center; }
+    #driverSeatGrid .bus-left-pair,
+    #driverSeatGrid .bus-right-pair { display: flex; gap: 3px; }
+    #driverSeatGrid .bus-aisle-gap { flex: 1; }
+    #driverSeatGrid .bus-mid-door {
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      padding: 4px; font-size: 0.7rem; color: #475569;
+      border-top: 1px dashed rgba(255,255,255,0.06); border-bottom: 1px dashed rgba(255,255,255,0.06);
+    }
+    #driverSeatGrid .bus-rear { background: rgba(0,0,0,0.1); border-radius: 0 0 8px 8px; padding: 5px; }
+    #driverSeatGrid .bus-rear-window { height: 8px; background: rgba(59,130,246,0.08); border-radius: 4px; border: 1px solid rgba(59,130,246,0.12); }
+
+    /* Driver badge inside seat grid */
+    #driverSeatGrid .driver-badge-real {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 8px; border-radius: 8px;
+      background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25);
+      font-size: 0.72rem; color: #a78bfa; font-weight: 600;
+    }
+    #driverSeatGrid .driver-wheel { font-size: 0.95rem; }
+
+    /* Seat clickable states in driver view */
+    #driverSeatGrid .rseat { cursor: pointer; }
+    #driverSeatGrid .rseat.driver { cursor: default; }
+    #driverSeatGrid .rseat:not(.driver):hover { transform: scale(1.1); z-index: 2; }
+
+    /* ── Toast ──────────────────────────────────────────────── */
+    #toastBox { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column-reverse; gap: 8px; align-items: center; pointer-events: none; }
+    .toast-item { display: flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 12px; font-size: 0.88rem; font-weight: 500; min-width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); backdrop-filter: blur(10px); opacity: 0; transform: translateY(16px) scale(0.95); transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); pointer-events: auto; }
+    .toast-item.show { opacity: 1; transform: translateY(0) scale(1); }
+    .toast-item.success { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+    .toast-item.error   { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .toast-item.warning { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+    .toast-item.info    { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
+
+    /* ══ MOBILE RESPONSIVE ════════════════════════════════════════ */
+
+    /* Mobile bottom tab bar (hidden on desktop) */
+    .mobile-tab-bar {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 600;
+      background: rgba(10,14,23,0.98);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+      grid-template-columns: repeat(3,1fr);
+    }
+    .tab-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 6px 8px; background: none; border: none; cursor: pointer;
+      color: #475569; font-family: 'Inter', sans-serif;
+      transition: all 0.2s;
+    }
+    .tab-btn.active { color: #a78bfa; }
+    .tab-btn-icon { font-size: 1.3rem; }
+    .tab-btn-label { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Mobile panel visibility */
+    .mobile-panel { display: block; }
+
+    @media (max-width: 768px) {
+      /* Show tab bar on mobile */
+      .mobile-tab-bar { display: grid; }
+
+      /* Stack layout vertically */
+      .dashboard-layout {
+        grid-template-columns: 1fr;
+        padding-top: 56px; /* smaller navbar on mobile */
+        padding-bottom: 72px; /* space for tab bar */
+        height: auto;
+        min-height: 100vh;
+      }
+
+      /* Smaller navbar */
+      .dash-nav {
+        height: 56px;
+        padding: 0 14px;
+      }
+      .dash-logo-text { font-size: 1rem; }
+      .driver-pill { display: none; } /* hide on mobile — shown in panel */
+      .nav-action-btn { padding: 5px 10px; font-size: 0.75rem; }
+      .dash-nav-right .nav-action-btn:first-child { display: none; } /* hide history btn */
+
+      /* Left panel full width, switchable via tabs */
+      .left-panel {
+        height: auto;
+        overflow: visible;
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+
+      /* Map panel */
+      .map-panel { height: 55vh; order: -1; /* show map first on mobile */ }
+      #driverMap { height: 55vh; }
+
+      /* Stats bar: 2x2 grid */
+      .stats-bar {
+        grid-template-columns: repeat(2,1fr);
+      }
+      .stat-tile:nth-child(2) { border-right: none; }
+      .stat-tile:nth-child(3) { border-top: 1px solid rgba(255,255,255,0.06); }
+      .stat-tile:nth-child(4) { border-top: 1px solid rgba(255,255,255,0.06); border-right: none; }
+
+      /* Panel sections */
+      .panel-section { margin: 10px; }
+      .panel-section-body { padding: 12px 14px; }
+
+      /* Route setup map smaller on mobile */
+      #setupMap { height: 140px; }
+
+      /* Form row single col */
+      .form-row { grid-template-columns: 1fr; }
+
+      /* Seat ctrl full width */
+      .seat-ctrl-btns { grid-template-columns: 1fr 1fr; }
+      .bottom-btns { grid-template-columns: 1fr 1fr; }
+
+      /* Seat grid smaller */
+      #driverSeatGrid { max-height: 280px; }
+
+      /* Passenger queue */
+      .passenger-queue { padding: 0 10px 80px; }
+
+      /* Ride request bottom sheet — full width on mobile */
+      .rr-sheet {
+        border-radius: 20px 20px 0 0;
+        max-width: 100%;
+      }
+      .rr-body { padding: 12px 16px; }
+      .rr-top { padding: 12px 16px 10px; }
+      .rr-stats { gap: 6px; }
+      .rr-stat-card { padding: 8px 6px; }
+      .rr-stat-val { font-size: 1.2rem; }
+      .rr-actions { gap: 8px; }
+      .rr-btn-accept, .rr-btn-reject { padding: 13px 10px; font-size: 0.9rem; }
+
+      /* Map overlays adjust */
+      .map-overlay-topbar { top: 8px; font-size: 0.75rem; padding: 6px 12px; }
+      .map-legend { bottom: 8px; left: 8px; padding: 8px 10px; }
+      .map-legend .legend-item { font-size: 0.68rem; }
+      .gps-badge { bottom: 8px; right: 8px; font-size: 0.75rem; padding: 6px 10px; }
+    }
+
+    @media (max-width: 480px) {
+      /* Extra small phones */
+      .dash-nav { height: 52px; padding: 0 12px; }
+      .stat-tile-val { font-size: 1.2rem; }
+      .stat-tile-label { font-size: 0.6rem; }
+      .btn-go-live { font-size: 0.88rem; padding: 12px; }
+      .seat-display-bar { padding: 10px; }
+      .seat-count-big { font-size: 2.2rem; }
+      .rr-heading h2 { font-size: 1.1rem; }
+
+      /* Hide vehicle SVG on very small screens — just show seat grid */
+      #driverSeatGrid .auto-svg,
+      #driverSeatGrid .car-svg { display: none; }
+      #driverSeatGrid .auto-body-wrap,
+      #driverSeatGrid .car-body-wrap { min-height: auto; position: static; }
+      #driverSeatGrid .auto-driver-area,
+      #driverSeatGrid .car-driver-area { position: static; transform: none; margin-bottom: 6px; }
+      #driverSeatGrid .auto-seats-overlay,
+      #driverSeatGrid .car-seats-front,
+      #driverSeatGrid .car-seats-back { position: static; transform: none; }
+      #driverSeatGrid .auto-seats-overlay { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+      #driverSeatGrid .car-body-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    }
+  </style>
 </head>
 
 <body>
-    <div class="bg-animate"></div>
-
-    <!-- Navbar -->
-    <nav class="navbar">
-        <a href="/" class="navbar-brand">
-            <div class="logo-icon">👁️</div>
-            <span class="logo-text">Eye In</span>
-        </a>
-        <div class="navbar-links" style="display: flex; align-items: center; gap: 12px;">
-            <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                <span id="driverInfo" style="color: var(--text-secondary); font-size: 0.85rem;"></span>
-                <span id="driverRatingBadge"
-                    style="background: rgba(251,191,36,0.15); color: #b45309; padding: 2px 6px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; display: none; margin-top: 2px;">⭐
-                    New</span>
-            </div>
-            <button onclick="openDriverHistory()"
-                style="background: rgba(59,130,246,0.1); border: 1px solid var(--primary); color: var(--primary); border-radius: 6px; padding: 6px 10px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: inherit; font-weight: 500;">📜
-                History</button>
-            <a href="#" onclick="logout()" style="color: var(--danger);">Logout</a>
+  <!-- Navbar -->
+  <nav class="dash-nav">
+    <div class="dash-nav-left">
+      <a href="/" class="dash-logo">
+        <div class="dash-logo-icon">👁️</div>
+        <span class="dash-logo-text">Eye In</span>
+      </a>
+      <div class="driver-pill">
+        <div class="driver-avatar">🚗</div>
+        <div>
+          <div class="driver-name-pill" id="driverNamePill">Loading...</div>
+          <div class="driver-vehicle-pill" id="driverVehiclePill">–</div>
         </div>
-    </nav>
+      </div>
+      <div class="status-pill offline" id="statusPill">
+        <div class="status-dot"></div>
+        <span id="statusText">Offline</span>
+      </div>
+    </div>
+    <div class="dash-nav-right">
+      <button class="nav-action-btn" onclick="openDriverHistory()">📜 History</button>
+      <button class="nav-action-btn danger" onclick="logout()">🚪 Logout</button>
+    </div>
+  </nav>
 
-    <!-- Dashboard -->
-    <div class="dashboard">
-        <div class="dashboard-content">
-            <div class="dashboard-header">
-                <h1>🚗 Driver Dashboard</h1>
-                <span class="badge badge-success" id="statusBadge">Offline</span>
-            </div>
+  <!-- Main Layout -->
+  <div class="dashboard-layout">
 
-            <!-- Stats -->
-            <div class="stats-grid" id="driverStats">
-                <div class="stat-card">
-                    <div class="stat-icon green">💺</div>
-                    <div class="stat-value" id="statEmptySeats">–</div>
-                    <div class="stat-label">Empty Seats</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon orange">👥</div>
-                    <div class="stat-value" id="statFilledSeats">–</div>
-                    <div class="stat-label">Filled Seats</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon purple">📍</div>
-                    <div class="stat-value" id="statRoute">–</div>
-                    <div class="stat-label">Current Route</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon blue">💰</div>
-                    <div class="stat-value" id="statFare">–</div>
-                    <div class="stat-label">Fare</div>
-                </div>
-            </div>
+    <!-- LEFT: Controls -->
+    <div class="left-panel">
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-                <!-- Route Setup -->
-                <div class="section-card" id="routeSetupSection">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h3 style="margin: 0;">📍 Route Setup</h3>
-                        <!-- Saved prefs badge -->
-                        <div id="savedPrefsBadge" style="
-                            display: none;
-                            align-items: center;
-                            gap: 6px;
-                            background: rgba(99,102,241,0.12);
-                            border: 1px solid var(--primary);
-                            border-radius: 20px;
-                            padding: 4px 12px;
-                            font-size: 0.75rem;
-                            color: var(--primary);
-                            font-weight: 600;
-                        ">
-                            💾 <span>Saved</span>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 20px;">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span style="font-size: 0.9rem; color: var(--text-secondary);">📍 Drag the markers below to
-                                pinpoint your exact route:</span>
-                        </div>
-                        <div id="setupMap"
-                            style="height: 250px; width: 100%; border-radius: 8px; border: 1px solid var(--border-color); z-index: 1;">
-                        </div>
-                        <div id="setupMapLoading"
-                            style="display: none; font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 4px;">
-                            Fetching exact address...</div>
-                    </div>
-
-                    <form id="routeForm" onsubmit="goLive(event)">
-                        <div class="form-group">
-                            <label>Start Location</label>
-                            <div class="autocomplete-wrapper">
-                                <input type="text" class="form-control" id="startLocation" placeholder="e.g. Mithapur"
-                                    required autocomplete="off">
-                                <div class="autocomplete-suggestions" id="startSuggestions"></div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Destination</label>
-                            <div class="autocomplete-wrapper">
-                                <input type="text" class="form-control" id="endLocation"
-                                    placeholder="e.g. Kota Junction" required autocomplete="off">
-                                <div class="autocomplete-suggestions" id="endSuggestions"></div>
-                            </div>
-                        </div>
-                        <div class="form-group" style="margin-top: 12px; margin-bottom: 12px;">
-                            <label>Intermediate Stops (Optional, comma separated)</label>
-                            <input type="text" class="form-control" id="stopsInput"
-                                placeholder="e.g. Talwandi, Bus Stand" autocomplete="off">
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                            <div class="form-group">
-                                <label>Fare (₹)</label>
-                                <input type="number" class="form-control" id="fareInput" placeholder="40" min="1"
-                                    required>
-                            </div>
-                            <div class="form-group">
-                                <label>Total Seats</label>
-                                <input type="number" class="form-control" id="seatsInput" placeholder="3" min="1"
-                                    max="60" required>
-                            </div>
-                        </div>
-
-                        <!-- Save / Clear Buttons -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-                            <button type="button" class="btn btn-outline" onclick="saveRoutePreferences()"
-                                style="font-size: 0.82rem; padding: 8px; border-color: var(--primary); color: var(--primary);">
-                                💾 Route Save Karo
-                            </button>
-                            <button type="button" class="btn btn-outline" onclick="clearSavedPreferences()"
-                                style="font-size: 0.82rem; padding: 8px; border-color: var(--danger); color: var(--danger);">
-                                🗑️ Saved Route Clear
-                            </button>
-                        </div>
-
-                        <button type="submit" class="btn btn-success btn-block btn-lg" id="goLiveBtn">
-                            🟢 Go Live
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Live Seat Control -->
-                <div class="section-card" id="seatControlSection">
-                    <h3>💺 Live Seat Control</h3>
-
-                    <div class="seat-display">
-                        <div class="seat-count">
-                            <span class="filled" id="filledCount">0</span>
-                            <span class="divider">/</span>
-                            <span class="total" id="totalCount">0</span>
-                        </div>
-                        <div class="seat-label">Filled / Total Seats</div>
-                    </div>
-
-                    <!-- Visual Seat Grid -->
-                    <div id="driverSeatGrid" style="margin-bottom: 20px;"></div>
-
-                    <div class="seat-controls">
-                        <button class="btn btn-danger btn-lg" onclick="updateSeat('fill')" id="fillBtn" disabled>
-                            ➕ Seat Filled
-                        </button>
-                        <button class="btn btn-success btn-lg" onclick="updateSeat('empty')" id="emptyBtn" disabled>
-                            ➖ Seat Empty
-                        </button>
-                    </div>
-
-                    <div style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <button class="btn btn-outline" onclick="endRide()" id="endRideBtn" disabled>
-                            🛑 End Ride
-                        </button>
-                        <button class="btn btn-primary" onclick="toggleSimulation()" id="simulateBtn" disabled
-                            style="background: var(--primary); color: white; border: none;">
-                            📍 Simulate Drive
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Live Map Section -->
-            <div class="section-card" id="mapSection" style="margin-top: 24px; display: none;">
-                <h3>🗺️ Live Map Tracking</h3>
-                <div id="driverMap" style="height: 400px; width: 100%; border-radius: 8px; z-index: 1;"></div>
-            </div>
+      <!-- Stats -->
+      <div class="stats-bar">
+        <div class="stat-tile">
+          <div class="stat-tile-val green" id="statEmpty">–</div>
+          <div class="stat-tile-label">Empty</div>
         </div>
+        <div class="stat-tile">
+          <div class="stat-tile-val orange" id="statFilled">–</div>
+          <div class="stat-tile-label">Filled</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-tile-val purple" id="statFare">–</div>
+          <div class="stat-tile-label">Fare</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-tile-val blue" id="statRequests">0</div>
+          <div class="stat-tile-label">Requests</div>
+        </div>
+      </div>
+
+      <!-- Route Setup -->
+      <div class="panel-section">
+        <div class="panel-section-header">
+          <div class="panel-section-title">📍 Route Setup</div>
+          <div class="saved-badge" id="savedBadge">💾 <span>Saved</span></div>
+        </div>
+        <div class="panel-section-body">
+          <div class="map-tip">🗺️ Map pe markers drag karke route set karo</div>
+          <div id="setupMap"></div>
+          <div id="mapLoadingTip" style="display:none;font-size:0.72rem;color:#475569;text-align:center;margin-bottom:8px;">📡 Address fetch ho raha hai...</div>
+
+          <form id="routeForm" onsubmit="goLive(event)">
+            <div class="field-grp">
+              <label class="field-lbl">🟢 Start Location</label>
+              <div class="autocomplete-wrapper">
+                <input type="text" class="field-inp" id="startLocation" placeholder="e.g. Mithapur Chauraha" required autocomplete="off">
+                <div class="autocomplete-suggestions" id="startSuggestions"></div>
+              </div>
+            </div>
+            <div class="field-grp">
+              <label class="field-lbl">🔴 Destination</label>
+              <div class="autocomplete-wrapper">
+                <input type="text" class="field-inp" id="endLocation" placeholder="e.g. Kota Junction" required autocomplete="off">
+                <div class="autocomplete-suggestions" id="endSuggestions"></div>
+              </div>
+            </div>
+            <div class="field-grp">
+              <label class="field-lbl">🛑 Intermediate Stops (optional)</label>
+              <input type="text" class="field-inp" id="stopsInput" placeholder="e.g. Talwandi, Bus Stand" autocomplete="off">
+            </div>
+            <div class="form-row">
+              <div class="field-grp" style="margin-bottom:0">
+                <label class="field-lbl">💰 Fare (₹)</label>
+                <input type="number" class="field-inp" id="fareInput" placeholder="40" min="1" required>
+              </div>
+              <div class="field-grp" style="margin-bottom:0">
+                <label class="field-lbl">💺 Total Seats</label>
+                <input type="number" class="field-inp" id="seatsInput" placeholder="3" min="1" max="60" required>
+              </div>
+            </div>
+
+            <div class="btn-row" style="margin-top:12px">
+              <button type="button" class="btn-sm-outline btn-sm-save" onclick="saveRoutePreferences()">💾 Save Route</button>
+              <button type="button" class="btn-sm-outline btn-sm-clear" onclick="clearSavedPreferences()">🗑️ Clear</button>
+            </div>
+            <button type="submit" class="btn-go-live" id="goLiveBtn">
+              🟢 Go Live
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Seat Control -->
+      <div class="panel-section">
+        <div class="panel-section-header">
+          <div class="panel-section-title">💺 Live Seat Control</div>
+        </div>
+        <div class="panel-section-body">
+          <div class="seat-display-bar">
+            <div>
+              <div class="seat-count-big">
+                <span class="filled" id="filledCount">0</span>
+                <span class="slash">/</span>
+                <span class="total" id="totalCount">0</span>
+              </div>
+              <div class="seat-count-label">Filled / Total Seats</div>
+            </div>
+          </div>
+
+          <div id="driverSeatGrid" style="margin-bottom:14px;"></div>
+
+          <div class="seat-ctrl-btns">
+            <button class="btn-fill" onclick="updateSeat('fill')" id="fillBtn" disabled>
+              ➕ Seat Filled
+            </button>
+            <button class="btn-empty" onclick="updateSeat('empty')" id="emptyBtn" disabled>
+              ➖ Seat Empty
+            </button>
+          </div>
+          <div class="bottom-btns">
+            <button class="btn-end-ride" onclick="endRide()" id="endRideBtn" disabled>🛑 End Ride</button>
+            <button class="btn-simulate" onclick="toggleSimulation()" id="simulateBtn" disabled>📍 Simulate</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Passenger Queue -->
+      <div class="passenger-queue" id="passengerQueueSection" style="display:none">
+        <div class="queue-header">
+          <div class="queue-title">🧑‍🤝‍🧑 Passenger Requests <span class="queue-badge" id="queueCount">0</span></div>
+        </div>
+        <div id="passengerQueueList">
+          <div class="queue-empty">Koi request nahi abhi</div>
+        </div>
+      </div>
+
+    </div><!-- /left-panel -->
+
+    <!-- RIGHT: Map -->
+    <div class="map-panel">
+      <!-- Top bar -->
+      <div class="map-overlay-topbar" id="mapTopBar" style="display:none">
+        <span>🚗</span>
+        <span class="route-display" id="mapRouteDisplay">–</span>
+      </div>
+
+      <!-- Map container -->
+      <div id="driverMap"></div>
+
+      <!-- Legend -->
+      <div class="map-legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#6366f1"></div> Aap (Driver)
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#f59e0b;animation:pendingPulse 2s infinite"></div> Pending Request
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#10b981"></div> Accepted Passenger
+        </div>
+      </div>
+
+      <!-- GPS Badge -->
+      <div class="gps-badge" id="gpsTrackerBadge">
+        <div class="gps-dot"></div>
+        <span id="gpsBadgeText">Broadcasting Location</span>
+      </div>
     </div>
 
-    <div class="modal-overlay" id="rideRequestModal" style="display: none; z-index: 1000;">
-        <div class="modal-content booking-card"
-            style="max-width: 420px; padding: 28px; border-radius: 20px; animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
-            <div class="booking-card-header" style="justify-content: center; margin-bottom: 24px;">
-                <div class="vmodal-vehicle-badge auto"
-                    style="width: 70px; height: 70px; font-size: 2.5rem; animation: rseatPulse 2s infinite;">🔔</div>
-            </div>
+  </div><!-- /dashboard-layout -->
 
-            <h2
-                style="margin-bottom: 6px; font-family: 'Outfit', sans-serif; font-size: 1.6rem; color: var(--text-primary);">
-                New Ride Request!</h2>
-            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">Someone wants to join your
-                route</p>
+  <!-- ══ RIDE REQUEST BOTTOM SHEET ══════════════════════════════ -->
+  <div class="rr-overlay" id="rideRequestModal">
+    <div class="rr-sheet">
+      <div class="rr-countdown-bar" id="rrCountdownBar"></div>
+      <div class="rr-handle"></div>
 
-            <!-- Passenger Info -->
-            <div
-                style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; margin-bottom: 20px; text-align: left;">
-
-                <div class="booking-input-wrap"
-                    style="margin-bottom: 12px; border: none; background: rgba(255,255,255,0.03);">
-                    <span class="booking-input-icon">🧑</span>
-                    <div style="display: flex; flex-direction: column;">
-                        <span
-                            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Passenger
-                            Name</span>
-                        <strong id="requestName"
-                            style="color: var(--text-primary); font-size: 1.15rem; font-family: 'Outfit', sans-serif;"></strong>
-                    </div>
-                </div>
-
-                <div class="booking-input-wrap"
-                    style="margin-bottom: 16px; border: none; background: rgba(255,255,255,0.03);">
-                    <span class="booking-input-icon">📞</span>
-                    <div style="display: flex; flex-direction: column;">
-                        <span
-                            style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Contact</span>
-                        <span id="requestPhone"
-                            style="font-size: 1.05rem; font-family: 'Inter', sans-serif; letter-spacing: 0.5px;"></span>
-                    </div>
-                </div>
-
-                <!-- Counters -->
-                <div class="booking-counters" style="margin-bottom: 0;">
-                    <div class="counter-card">
-                        <div class="counter-label"
-                            style="text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.5px;">Passengers
-                        </div>
-                        <div id="requestPassengers" class="counter-value" style="color: var(--primary);"></div>
-                    </div>
-                    <div class="counter-card">
-                        <div class="counter-label"
-                            style="text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.5px;">Seats Req.
-                        </div>
-                        <div id="requestSeatsBadge" class="counter-value" style="color: var(--primary);"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Selected Seat Numbers -->
-            <div id="requestSeatNumbers"
-                style="display: none; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); border-radius: 12px; padding: 12px; margin-bottom: 16px; font-size: 0.95rem; color: var(--accent-primary); font-family: 'Outfit', sans-serif; font-weight: 600;">
-            </div>
-
-            <!-- Available seats warning -->
-            <div id="availableSeatsInfo"
-                style="border-radius: 12px; padding: 12px; margin-bottom: 24px; font-size: 0.9rem; font-weight: 600; font-family: 'Inter', sans-serif;">
-            </div>
-
-            <div style="display: flex; gap: 16px; justify-content: center;">
-                <button class="booking-submit-btn" id="acceptRideBtn" style="flex: 1;" onclick="respondToRide(true)">
-                    <div class="booking-btn-content">
-                        <span>✅ Accept</span>
-                    </div>
-                    <div class="booking-btn-shine"></div>
-                </button>
-                <button class="booking-submit-btn" id="rejectRideBtn"
-                    style="flex: 1; background: rgba(239, 68, 68, 0.15); color: var(--danger); box-shadow: none;"
-                    onclick="respondToRide(false)">
-                    <div class="booking-btn-content">
-                        <span>❌ Reject</span>
-                    </div>
-                </button>
-            </div>
+      <div class="rr-top">
+        <div class="rr-ring">🔔</div>
+        <div class="rr-heading">
+          <h2>Naya Ride Request! 🎉</h2>
+          <p>Koi aapki route pe join karna chahta hai</p>
         </div>
-    </div>
+        <div class="rr-timer-badge">⏱️ <span id="rrTimer">20</span>s</div>
+      </div>
 
-    <!-- Active Tracker Indicator -->
-    <div id="gpsTrackerBadge"
-        style="display: none; position: fixed; bottom: 20px; left: 20px; background: var(--success); color: white; padding: 10px 16px; border-radius: 20px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); font-size: 0.9rem; font-weight: 500; z-index: 50; display: flex; align-items: center; gap: 8px;">
-        <div class="dot pulse-dot" style="background: white;"></div> Broadcasting Live Location
-    </div>
+      <div class="rr-body">
+        <!-- Passenger Info -->
+        <div class="rr-passenger-block">
+          <div class="rr-info-row">
+            <span class="rr-info-icon">🧑</span>
+            <div>
+              <div class="rr-info-lbl">Passenger Name</div>
+              <div class="rr-info-val" id="requestName">–</div>
+            </div>
+          </div>
+          <div class="rr-info-row">
+            <span class="rr-info-icon">📞</span>
+            <div>
+              <div class="rr-info-lbl">Contact</div>
+              <div class="rr-info-val phone" id="requestPhone">–</div>
+            </div>
+          </div>
+          <div class="rr-info-row">
+            <span class="rr-info-icon">📍</span>
+            <div>
+              <div class="rr-info-lbl">Location</div>
+              <div class="rr-info-val" id="requestLocation" style="font-size:0.82rem;color:#94a3b8;">Detecting...</div>
+            </div>
+          </div>
+        </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/driver.js"></script>
-    <script src="/js/pwa.js"></script>
-    <script>
-        // Register Service Worker for PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
-        }
-    </script>
+        <!-- Stats -->
+        <div class="rr-stats">
+          <div class="rr-stat-card">
+            <div class="rr-stat-val" id="requestPassengers">–</div>
+            <div class="rr-stat-lbl">Passengers</div>
+          </div>
+          <div class="rr-stat-card">
+            <div class="rr-stat-val" id="requestSeatsBadge">–</div>
+            <div class="rr-stat-lbl">Seats Req.</div>
+          </div>
+          <div class="rr-stat-card">
+            <div class="rr-stat-val" id="rrAvailSeats" style="color:#10b981">–</div>
+            <div class="rr-stat-lbl">Available</div>
+          </div>
+        </div>
+
+        <!-- Seat numbers -->
+        <div class="rr-seat-numbers" id="requestSeatNumbers"></div>
+
+        <!-- Availability -->
+        <div class="rr-avail ok" id="availableSeatsInfo">✅ Seats available hain</div>
+
+        <!-- Actions -->
+        <div class="rr-actions">
+          <button class="rr-btn-accept" id="acceptRideBtn" onclick="respondToRide(true)">
+            ✅ Accept
+          </button>
+          <button class="rr-btn-reject" id="rejectRideBtn" onclick="respondToRide(false)">
+            ❌ Reject
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ HISTORY MODAL ══════════════════════════════════════════ -->
+  <div class="history-overlay" id="driverHistoryModal">
+    <div class="history-card">
+      <div class="history-topbar">
+        <div class="history-title">📜 Ride History</div>
+        <button class="close-btn" onclick="closeDriverHistory()">✕</button>
+      </div>
+      <div class="history-list" id="driverHistoryList">
+        <div style="text-align:center;padding:24px;color:#334155;">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toastBox"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ══ PASSENGER QUEUE MANAGER ════════════════════════════════
+    const passengerQueue = {}; // { userId: { ...data, marker, status } }
+    let totalRequestsCount = 0;
+
+    function addToQueue(data) {
+      totalRequestsCount++;
+      passengerQueue[data.userId] = { ...data, status: 'pending' };
+      document.getElementById('statRequests').textContent = totalRequestsCount;
+      renderPassengerQueue();
+      plotPassengerOnMap(data, 'pending');
+    }
+
+    function updateQueueStatus(userId, status) {
+      if (passengerQueue[userId]) {
+        passengerQueue[userId].status = status;
+        // Update marker color
+        updatePassengerMarker(userId, status);
+        renderPassengerQueue();
+      }
+    }
+
+    function renderPassengerQueue() {
+      const list = document.getElementById('passengerQueueList');
+      const section = document.getElementById('passengerQueueSection');
+      const queueArr = Object.values(passengerQueue);
+      document.getElementById('queueCount').textContent = queueArr.length;
+
+      if (queueArr.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+      section.style.display = 'block';
+
+      list.innerHTML = queueArr.map(p => `
+        <div class="passenger-card ${p.status}" onclick="focusPassengerOnMap('${p.userId}')">
+          <div class="pcard-row">
+            <div class="pcard-name">
+              ${p.status === 'pending' ? '🟡' : '🟢'} ${p.name}
+            </div>
+            <button class="pcard-locate-btn" onclick="event.stopPropagation();focusPassengerOnMap('${p.userId}')">📍 Show</button>
+          </div>
+          <div class="pcard-phone">📞 ${p.phone}</div>
+          <div class="pcard-meta">
+            <span class="pcard-chip seats">💺 ${p.seats} seat${p.seats > 1 ? 's' : ''}</span>
+            <span class="pcard-chip seats">👥 ${p.passengers} pax</span>
+            <span class="pcard-chip ${p.status}">${p.status === 'pending' ? '⏳ Pending' : '✅ Accepted'}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ══ MAP PASSENGER MARKERS ══════════════════════════════════
+    const passengerMarkers = {}; // { userId: L.marker }
+
+    function plotPassengerOnMap(data, status) {
+      if (!driverMap || !data.userLat || !data.userLng) return;
+
+      // Remove existing if any
+      if (passengerMarkers[data.userId]) {
+        driverMap.removeLayer(passengerMarkers[data.userId]);
+      }
+
+      const colorClass = status === 'pending' ? 'marker-pending' : 'marker-accepted';
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="position:relative">
+          <div class="marker-passenger ${colorClass}">🧑</div>
+          <div class="marker-label">${data.name.split(' ')[0]}</div>
+        </div>`,
+        iconSize: [40, 50],
+        iconAnchor: [18, 36]
+      });
+
+      const marker = L.marker([data.userLat, data.userLng], { icon })
+        .addTo(driverMap)
+        .bindPopup(`
+          <div class="pop-name">🧑 ${data.name}</div>
+          <div class="pop-info">📞 ${data.phone}</div>
+          <div class="pop-info">💺 ${data.seats} seat(s) • 👥 ${data.passengers} pax</div>
+          <div class="pop-info" style="margin-top:4px;color:${status==='pending'?'#fbbf24':'#34d399'}">${status === 'pending' ? '⏳ Request Pending' : '✅ Accepted'}</div>
+        `);
+
+      passengerMarkers[data.userId] = marker;
+
+      // Draw line from driver to passenger
+      drawRouteLine(data.userId, data.userLat, data.userLng);
+
+      // Pan map to show both
+      fitMapToBoth(data.userLat, data.userLng);
+    }
+
+    // Lines from driver to passengers
+    const routeLines = {};
+    function drawRouteLine(userId, lat, lng) {
+      if (!driverMap || !driverMarker) return;
+      if (routeLines[userId]) driverMap.removeLayer(routeLines[userId]);
+
+      const dLatLng = driverMarker.getLatLng();
+      routeLines[userId] = L.polyline(
+        [[dLatLng.lat, dLatLng.lng], [lat, lng]],
+        { color: '#6366f1', weight: 2, opacity: 0.5, dashArray: '6 6' }
+      ).addTo(driverMap);
+    }
+
+    function updatePassengerMarker(userId, status) {
+      const data = passengerQueue[userId];
+      if (data) plotPassengerOnMap(data, status);
+    }
+
+    function removePassengerFromMap(userId) {
+      if (passengerMarkers[userId]) {
+        driverMap.removeLayer(passengerMarkers[userId]);
+        delete passengerMarkers[userId];
+      }
+      if (routeLines[userId]) {
+        driverMap.removeLayer(routeLines[userId]);
+        delete routeLines[userId];
+      }
+    }
+
+    function focusPassengerOnMap(userId) {
+      const marker = passengerMarkers[userId];
+      if (marker && driverMap) {
+        driverMap.setView(marker.getLatLng(), 15);
+        marker.openPopup();
+      }
+    }
+
+    function fitMapToBoth(pLat, pLng) {
+      if (!driverMap || !driverMarker) return;
+      const dLatLng = driverMarker.getLatLng();
+      const bounds = L.latLngBounds([[dLatLng.lat, dLatLng.lng], [pLat, pLng]]);
+      driverMap.fitBounds(bounds, { padding: [60, 60] });
+    }
+  </script>
+  <script src="/js/driver.js"></script>
+  <script src="/js/pwa.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
+    }
+
+    // Open/close history modal
+    function openDriverHistory() {
+      const el = document.getElementById('driverHistoryModal');
+      el.classList.add('open');
+      // call the function from driver.js
+      if (typeof loadDriverHistory === 'function') loadDriverHistory();
+    }
+    function closeDriverHistory() {
+      document.getElementById('driverHistoryModal').classList.remove('open');
+    }
+    document.getElementById('driverHistoryModal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeDriverHistory();
+    });
+    document.getElementById('rideRequestModal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) { /* don't close on backdrop */ }
+    });
+  </script>
 </body>
-
 </html>

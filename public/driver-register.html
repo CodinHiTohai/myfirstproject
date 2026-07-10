@@ -1,129 +1,271 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driver Registration – Eye In</title>
-    <link rel="stylesheet" href="/css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driver Registration – Eye In</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0a0e17; overflow-x: hidden; padding: 20px; }
+    .bg-blob { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; }
+    .blob1 { width: 500px; height: 500px; background: rgba(99,102,241,0.12); top: -150px; right: -150px; animation: blobFloat 18s ease-in-out infinite; }
+    .blob2 { width: 400px; height: 400px; background: rgba(16,185,129,0.08); bottom: -100px; left: -100px; animation: blobFloat 22s ease-in-out infinite reverse; }
+    @keyframes blobFloat { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(20px,-20px) scale(1.05)} 66%{transform:translate(-15px,15px) scale(0.95)} }
+
+    .register-card {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 500px;
+      background: rgba(17,24,39,0.92);
+      backdrop-filter: blur(30px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px;
+      padding: 40px 38px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+      animation: cardUp 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes cardUp { from{opacity:0;transform:translateY(40px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+    .card-top-bar { position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#6366f1,#8b5cf6,#10b981); border-radius:24px 24px 0 0; }
+
+    .reg-logo { display:flex; align-items:center; gap:12px; margin-bottom:28px; }
+    .reg-logo-icon { width:46px; height:46px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; box-shadow:0 4px 16px rgba(99,102,241,0.35); }
+    .reg-logo-text { font-family:'Outfit',sans-serif; font-size:1.4rem; font-weight:700; background:linear-gradient(135deg,#6366f1,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+
+    .reg-heading { margin-bottom:28px; }
+    .reg-heading h1 { font-family:'Outfit',sans-serif; font-size:1.7rem; font-weight:700; color:#f1f5f9; margin-bottom:5px; }
+    .reg-heading p { font-size:0.88rem; color:#64748b; }
+
+    /* Steps indicator */
+    .steps-bar { display:flex; align-items:center; gap:0; margin-bottom:28px; }
+    .step-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .step-circle {
+      width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      font-size:0.8rem; font-weight:700; transition: all 0.3s ease;
+      border: 2px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #64748b;
+    }
+    .step-circle.active { background: linear-gradient(135deg,#6366f1,#8b5cf6); border-color: transparent; color: white; box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+    .step-circle.done { background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.4); color: #10b981; }
+    .step-label { font-size:0.68rem; color:#64748b; text-align:center; }
+    .step-line { flex:1; height:1px; background: rgba(255,255,255,0.08); max-width: 40px; margin-top:-16px; }
+
+    /* Field styles */
+    .field-group { margin-bottom:16px; }
+    .field-label { display:flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.6px; color:#64748b; margin-bottom:7px; }
+    .field-wrap { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.04); border:1.5px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 16px; transition:all 0.2s ease; }
+    .field-wrap:focus-within { border-color:rgba(99,102,241,0.5); background:rgba(99,102,241,0.05); box-shadow:0 0 0 3px rgba(99,102,241,0.1); }
+    .field-icon { font-size:1rem; flex-shrink:0; }
+    .field-input { flex:1; background:transparent; border:none; outline:none; color:#f1f5f9; font-family:'Inter',sans-serif; font-size:0.93rem; font-weight:500; min-width:0; }
+    .field-input::placeholder { color:#475569; font-weight:400; }
+    .field-select {
+      flex:1; background:transparent; border:none; outline:none;
+      color:#f1f5f9; font-family:'Inter',sans-serif; font-size:0.93rem; font-weight:500;
+      -webkit-appearance:none; appearance:none; cursor:pointer;
+    }
+    .field-select option { background:#1a2035; color:#f1f5f9; }
+
+    /* Vehicle type cards */
+    .vehicle-type-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:0; }
+    .vtype-card {
+      padding:10px 6px; border-radius:10px; border:1.5px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.03); cursor:pointer; text-align:center;
+      transition:all 0.2s ease; user-select:none;
+    }
+    .vtype-card:hover { border-color:rgba(99,102,241,0.3); background:rgba(99,102,241,0.06); }
+    .vtype-card.selected { border-color:rgba(99,102,241,0.5); background:rgba(99,102,241,0.12); }
+    .vtype-icon { font-size:1.6rem; display:block; margin-bottom:4px; }
+    .vtype-label { font-size:0.72rem; color:#94a3b8; font-weight:500; }
+    .vtype-card.selected .vtype-label { color:#a78bfa; }
+    #vehicleTypeInput { display:none; }
+
+    /* 2col grid */
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+    /* Submit */
+    .submit-btn { width:100%; padding:15px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; border-radius:12px; color:white; font-family:'Inter',sans-serif; font-size:1rem; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.25s ease; box-shadow:0 6px 24px rgba(99,102,241,0.35); margin-top:20px; margin-bottom:20px; position:relative; overflow:hidden; }
+    .submit-btn:hover { transform:translateY(-2px); box-shadow:0 10px 32px rgba(99,102,241,0.45); }
+    .submit-btn:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+
+    .login-links { text-align:center; }
+    .login-links p { font-size:0.88rem; color:#64748b; margin-bottom:8px; }
+    .login-links a { color:#a78bfa; text-decoration:none; font-weight:600; }
+    .login-links a:hover { color:#c4b5fd; }
+    .back-home { font-size:0.82rem; color:#475569; text-decoration:none; transition:color 0.2s; }
+    .back-home:hover { color:#94a3b8; }
+
+    .error-box { display:none; margin-top:12px; padding:12px 16px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); border-radius:10px; color:#fca5a5; font-size:0.85rem; align-items:center; gap:8px; }
+    .spin { width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.7s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* Password strength */
+    .pass-strength { margin-top:6px; display:flex; gap:4px; }
+    .strength-bar { flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,0.08); transition:background 0.3s ease; }
+    .strength-bar.weak { background:#ef4444; }
+    .strength-bar.medium { background:#f59e0b; }
+    .strength-bar.strong { background:#10b981; }
+  </style>
 </head>
-
 <body>
-    <div class="split-layout">
-        <!-- Left: Branding -->
-        <div class="split-brand">
-            <div class="split-brand-content">
-                <div class="brand-icon">🚗</div>
-                <h1>Eye In</h1>
-                <p>Driver Portal — Join the platform, set your routes, and manage seats in real-time.</p>
-            </div>
-        </div>
+  <div class="bg-blob blob1"></div>
+  <div class="bg-blob blob2"></div>
 
-        <!-- Right: Registration Form -->
-        <div class="split-form">
-            <div class="form-wrapper">
-                <h2>Driver Registration</h2>
-                <p class="form-subtitle">Create your driver account</p>
+  <div class="register-card">
+    <div class="card-top-bar"></div>
 
-                <form id="registerForm" onsubmit="handleRegister(event)">
-                    <div class="form-group">
-                        <label>👤 Full Name</label>
-                        <input type="text" class="form-control" id="nameInput" placeholder="Enter your full name"
-                            required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>📱 Mobile Number</label>
-                        <input type="tel" class="form-control" id="phoneInput"
-                            placeholder="Enter 10-digit mobile number" required>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <div class="form-group">
-                            <label>🔢 Vehicle Number</label>
-                            <input type="text" class="form-control" id="vehicleNumInput" placeholder="e.g. RJ14 AB1234"
-                                required>
-                        </div>
-                        <div class="form-group">
-                            <label>🚌 Vehicle Type</label>
-                            <select class="form-control" id="vehicleTypeInput" required
-                                style="background-color: var(--surface-light); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
-                                <option value="auto">Auto</option>
-                                <option value="car">Car</option>
-                                <option value="van">Van</option>
-                                <option value="bus">Mini Bus / Bus</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>🔒 Password</label>
-                        <input type="password" class="form-control" id="passwordInput" placeholder="Create a password"
-                            required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="registerBtn">
-                        Register →
-                    </button>
-                </form>
-
-                <div style="text-align: center; margin-top: 24px;">
-                    <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 8px;">
-                        Already have an account? <a href="/driver-login.html"
-                            style="color: var(--primary); font-weight: 500; text-decoration: none;">Login here</a>
-                    </p>
-                    <a href="/" style="color: var(--text-muted); text-decoration: none; font-size: 0.85rem;">← Back to
-                        Home</a>
-                </div>
-
-                <div id="registerError"
-                    style="display: none; margin-top: 16px; padding: 12px; background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-sm); color: var(--danger); font-size: 0.85rem;">
-                </div>
-            </div>
-        </div>
+    <div class="reg-logo">
+      <div class="reg-logo-icon">👁️</div>
+      <div>
+        <div class="reg-logo-text">Eye In</div>
+        <div style="font-size:0.75rem; color:#64748b; font-weight:500;">Driver Registration</div>
+      </div>
     </div>
 
-    <script>
-        async function handleRegister(e) {
-            e.preventDefault();
-            const name = document.getElementById('nameInput').value.trim();
-            const phone = document.getElementById('phoneInput').value.trim();
-            const vehicle_number = document.getElementById('vehicleNumInput').value.trim();
-            const vehicle_type = document.getElementById('vehicleTypeInput').value;
-            const password = document.getElementById('passwordInput').value;
+    <div class="reg-heading">
+      <h1>Driver bano 🚗</h1>
+      <p>Platform pe join karein aur apni rides manage karein</p>
+    </div>
 
-            const errorDiv = document.getElementById('registerError');
-            const btn = document.getElementById('registerBtn');
+    <form id="registerForm" onsubmit="handleRegister(event)">
+      <!-- Name + Phone -->
+      <div class="two-col">
+        <div class="field-group">
+          <div class="field-label">👤 Full Name</div>
+          <div class="field-wrap">
+            <span class="field-icon">🧑</span>
+            <input type="text" class="field-input" id="nameInput" placeholder="Poora naam" required>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">📱 Mobile</div>
+          <div class="field-wrap">
+            <span class="field-icon">🇮🇳</span>
+            <input type="tel" class="field-input" id="phoneInput" placeholder="10 digit" required maxlength="10">
+          </div>
+        </div>
+      </div>
 
-            btn.textContent = 'Registering...';
-            btn.disabled = true;
-            errorDiv.style.display = 'none';
+      <!-- Vehicle Number -->
+      <div class="field-group">
+        <div class="field-label">🔢 Vehicle Number</div>
+        <div class="field-wrap">
+          <span class="field-icon">🚘</span>
+          <input type="text" class="field-input" id="vehicleNumInput" placeholder="e.g. RJ14 AB 1234" required style="text-transform:uppercase">
+        </div>
+      </div>
 
-            try {
-                const res = await fetch('/api/auth/driver-register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, phone, password, vehicle_number, vehicle_type })
-                });
+      <!-- Vehicle Type -->
+      <div class="field-group">
+        <div class="field-label">🚌 Vehicle Type</div>
+        <div class="vehicle-type-grid">
+          <div class="vtype-card selected" data-value="auto" onclick="selectVType(this)">
+            <span class="vtype-icon">🛺</span>
+            <span class="vtype-label">Auto</span>
+          </div>
+          <div class="vtype-card" data-value="car" onclick="selectVType(this)">
+            <span class="vtype-icon">🚗</span>
+            <span class="vtype-label">Car</span>
+          </div>
+          <div class="vtype-card" data-value="van" onclick="selectVType(this)">
+            <span class="vtype-icon">🚐</span>
+            <span class="vtype-label">Van</span>
+          </div>
+          <div class="vtype-card" data-value="bus" onclick="selectVType(this)">
+            <span class="vtype-icon">🚌</span>
+            <span class="vtype-label">Bus</span>
+          </div>
+        </div>
+        <input type="hidden" id="vehicleTypeInput" value="auto">
+      </div>
 
-                const data = await res.json();
+      <!-- Password -->
+      <div class="field-group">
+        <div class="field-label">🔒 Password</div>
+        <div class="field-wrap">
+          <span class="field-icon">🔑</span>
+          <input type="password" class="field-input" id="passwordInput" placeholder="Strong password banayein" required oninput="checkStrength(this.value)">
+          <button type="button" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:1rem;" onclick="this.previousElementSibling.type=this.previousElementSibling.type==='password'?'text':'password'">👁️</button>
+        </div>
+        <div class="pass-strength">
+          <div class="strength-bar" id="sb1"></div>
+          <div class="strength-bar" id="sb2"></div>
+          <div class="strength-bar" id="sb3"></div>
+          <div class="strength-bar" id="sb4"></div>
+        </div>
+      </div>
 
-                if (!res.ok) {
-                    throw new Error(data.error || 'Registration failed');
-                }
+      <button type="submit" class="submit-btn" id="registerBtn">
+        <span id="registerBtnText">Register Karein 🚀</span>
+      </button>
+    </form>
 
-                // Auto login after registration
-                localStorage.setItem('driverToken', data.token);
-                localStorage.setItem('driverData', JSON.stringify(data.driver));
-                window.location.href = '/driver-dashboard.html';
+    <div class="error-box" id="registerError">
+      <span>❌</span>
+      <span id="errorText"></span>
+    </div>
 
-            } catch (err) {
-                errorDiv.textContent = err.message;
-                errorDiv.style.display = 'block';
-                btn.textContent = 'Register →';
-                btn.disabled = false;
-            }
-        }
-    </script>
+    <div class="login-links">
+      <p>Pehle se account hai? <a href="/driver-login.html">Login karein →</a></p>
+      <a href="/" class="back-home">← Wapas Home</a>
+    </div>
+  </div>
+
+  <script>
+    function selectVType(el) {
+      document.querySelectorAll('.vtype-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('vehicleTypeInput').value = el.getAttribute('data-value');
+    }
+
+    function checkStrength(val) {
+      const bars = [document.getElementById('sb1'), document.getElementById('sb2'), document.getElementById('sb3'), document.getElementById('sb4')];
+      bars.forEach(b => b.className = 'strength-bar');
+      if (!val) return;
+      let score = 0;
+      if (val.length >= 6) score++;
+      if (val.length >= 8) score++;
+      if (/[A-Z]/.test(val) || /[0-9]/.test(val)) score++;
+      if (/[^a-zA-Z0-9]/.test(val)) score++;
+      const cls = score <= 1 ? 'weak' : score <= 2 ? 'medium' : score <= 3 ? 'medium' : 'strong';
+      bars.slice(0, score).forEach(b => b.classList.add(cls));
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const name = document.getElementById('nameInput').value.trim();
+      const phone = document.getElementById('phoneInput').value.trim();
+      const vehicle_number = document.getElementById('vehicleNumInput').value.trim().toUpperCase();
+      const vehicle_type = document.getElementById('vehicleTypeInput').value;
+      const password = document.getElementById('passwordInput').value;
+
+      const errorDiv = document.getElementById('registerError');
+      const errorText = document.getElementById('errorText');
+      const btn = document.getElementById('registerBtn');
+      const btnText = document.getElementById('registerBtnText');
+
+      btnText.innerHTML = '<span class="spin"></span> Registering...';
+      btn.disabled = true;
+      errorDiv.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/driver-register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, password, vehicle_number, vehicle_type })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Registration failed');
+
+        localStorage.setItem('driverToken', data.token);
+        localStorage.setItem('driverData', JSON.stringify(data.driver));
+
+        btnText.textContent = '✅ Success! Redirecting...';
+        setTimeout(() => { window.location.href = '/driver-dashboard.html'; }, 600);
+      } catch (err) {
+        errorText.textContent = err.message;
+        errorDiv.style.display = 'flex';
+        btnText.textContent = 'Register Karein 🚀';
+        btn.disabled = false;
+      }
+    }
+  </script>
 </body>
-
 </html>

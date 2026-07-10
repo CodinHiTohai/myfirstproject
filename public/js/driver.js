@@ -37,16 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     driverData = JSON.parse(stored);
-    document.getElementById('driverInfo').textContent = `${driverData.name} • ${driverData.vehicle_number}`;
 
-    // Display Rating
-    if (driverData.total_ratings > 0) {
-        const badge = document.getElementById('driverRatingBadge');
-        if (badge) {
-            badge.style.display = 'inline-block';
-            badge.innerHTML = `⭐ ${parseFloat(driverData.avg_rating).toFixed(1)} <span style="font-weight: normal; opacity: 0.8;">(${driverData.total_ratings})</span>`;
-        }
-    }
+    // Update new navbar elements
+    const namePill = document.getElementById('driverNamePill');
+    const vehiclePill = document.getElementById('driverVehiclePill');
+    if (namePill) namePill.textContent = driverData.name;
+    if (vehiclePill) vehiclePill.textContent = `${driverData.vehicle_number} • ${driverData.vehicle_type || ''}`;
 
     // Initialize Setup Map
     initSetupMap();
@@ -287,12 +283,13 @@ async function goLive(e) {
     }
 }
 
-// ─── Activate Live Mode ──────────────────────────────────────
+// ─── Activate Live Mode ────────────────────────────────────────
 function activateLiveMode() {
-    // Update status badge
-    const badge = document.getElementById('statusBadge');
-    badge.textContent = '🟢 LIVE';
-    badge.className = 'badge badge-success';
+    // Update status pill (new navbar)
+    const pill = document.getElementById('statusPill');
+    const pillText = document.getElementById('statusText');
+    if (pill) { pill.className = 'status-pill live'; }
+    if (pillText) pillText.textContent = 'LIVE';
 
     // Update stats
     updateStats();
@@ -303,9 +300,11 @@ function activateLiveMode() {
     document.getElementById('endRideBtn').disabled = false;
     document.getElementById('simulateBtn').disabled = false;
 
-    // Disable route form
-    document.getElementById('goLiveBtn').innerHTML = '🔄 Update Route';
-    document.getElementById('goLiveBtn').disabled = false;
+    // Update go live btn
+    const goLiveBtn = document.getElementById('goLiveBtn');
+    goLiveBtn.innerHTML = '🔄 Update Route';
+    goLiveBtn.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6)';
+    goLiveBtn.disabled = false;
 
     // Fill form with current route data
     document.getElementById('startLocation').value = currentRoute.start_location;
@@ -498,10 +497,17 @@ function toggleSimulation() {
 // ─── Ride Requests ───────────────────────────────────────────
 async function respondToRide(accepted) {
     clearTimeout(requestTimeout);
+    if (typeof stopRRTimer === 'function') stopRRTimer();
 
-    if (!currentRequest || !currentRoute) return; // Use currentRequest and currentRoute
+    if (!currentRequest || !currentRoute) return;
 
-    document.getElementById('rideRequestModal').style.display = 'none'; // Hide modal here
+    // Hide bottom sheet
+    const modal = document.getElementById('rideRequestModal');
+    if (modal) modal.classList.remove('open');
+
+    const reqUserId = currentRequest.userId;
+    const reqName = currentRequest.name;
+    const reqSeats = currentRequest.seats;
 
     if (accepted) {
         socket.emit('accept-ride', {
@@ -516,15 +522,11 @@ async function respondToRide(accepted) {
             seats: currentRequest.seats || 1
         });
 
-        // Automatically update the seats based on requested seats
         try {
-            const res = await fetch(`/api/routes/${currentRoute.id}/seats`, { // Use currentRoute.id
+            const res = await fetch(`/api/routes/${currentRoute.id}/seats`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${driverAuthToken}` // Use driverAuthToken
-                },
-                body: JSON.stringify({ action: 'fill', count: currentRequest.seats }) // Use currentRequest.seats
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${driverAuthToken}` },
+                body: JSON.stringify({ action: 'fill', count: currentRequest.seats })
             });
 
             if (res.ok) {
@@ -533,38 +535,40 @@ async function respondToRide(accepted) {
                 currentRoute.total_seats = data.total_seats;
                 updateStats();
                 renderDriverSeatGrid();
-                showToast(`✅ Accepted ride. Filled ${currentRequest.seats} seat(s).`, 'success');
+                showToast(`✅ ${reqName} ki ride accept! ${reqSeats} seat(s) filled.`, 'success');
             } else {
-                showToast('Accepted ride, but could not update seats automatically.', 'warning');
+                showToast('Accept hua, par seats update nahi hua.', 'warning');
             }
         } catch (err) {
-            console.error(err);
-            showToast('Accepted ride, but an error occurred updating seats.', 'error');
+            showToast('Error: ' + err.message, 'error');
         }
 
+        // Turn marker green (accepted) in queue and map
+        if (typeof updateQueueStatus === 'function') updateQueueStatus(reqUserId, 'accepted');
+
     } else {
-        socket.emit('reject-ride', {
-            userId: currentRequest.userId,
-            routeId: currentRoute.id // Use currentRoute.id
-        });
-        showToast(`❌ You rejected a ride for ${currentRequest.name}`, 'info');
+        socket.emit('reject-ride', { userId: currentRequest.userId, routeId: currentRoute.id });
+        showToast(`❌ ${reqName} ki ride reject kar di`, 'info');
+
+        // Remove from queue and map on rejection
+        if (typeof removePassengerFromMap === 'function') removePassengerFromMap(reqUserId);
+        if (typeof passengerQueue !== 'undefined' && passengerQueue) delete passengerQueue[reqUserId];
+        if (typeof renderPassengerQueue === 'function') renderPassengerQueue();
     }
 
-    currentRequest = null; // Clear current request after responding
+    currentRequest = null;
 }
 
 // ─── Update Stats ────────────────────────────────────────────
 function updateStats() {
     if (!currentRoute) return;
-
     const empty = currentRoute.total_seats - currentRoute.filled_seats;
-    document.getElementById('statEmptySeats').textContent = empty;
-    document.getElementById('statFilledSeats').textContent = currentRoute.filled_seats;
-    document.getElementById('statRoute').textContent = `${currentRoute.start_location} → ${currentRoute.end_location}`;
-    document.getElementById('statRoute').style.fontSize = '0.9rem';
-    document.getElementById('statFare').textContent = `₹${currentRoute.fare}`;
-    document.getElementById('filledCount').textContent = currentRoute.filled_seats;
-    document.getElementById('totalCount').textContent = currentRoute.total_seats;
+    const st = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    st('statEmpty', empty);
+    st('statFilled', currentRoute.filled_seats);
+    st('statFare', `₹${currentRoute.fare}`);
+    st('filledCount', currentRoute.filled_seats);
+    st('totalCount', currentRoute.total_seats);
 }
 
 // ─── Render Driver Seat Grid (Premium UI) ──────────────────────
@@ -906,84 +910,129 @@ function logout() {
     window.location.href = '/driver-login.html';
 }
 
-// ─── Toast ───────────────────────────────────────────────────
+// ─── Toast ────────────────────────────────────────────────────
 function showToast(msg, type = 'info') {
+    const container = document.getElementById('toastBox') || document.body;
     const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = msg;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3500);
+    toast.className = `toast-item ${type}`;
+    const icons = { success:'✅', error:'❌', info:'ℹ️', warning:'⚠️' };
+    toast.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3500);
+}
+
+// ── Countdown timer for ride request ─────────────────────────
+let rrTimerInterval = null;
+
+function startRRTimer() {
+    let remaining = 20;
+    const timerEl = document.getElementById('rrTimer');
+    if (rrTimerInterval) clearInterval(rrTimerInterval);
+    rrTimerInterval = setInterval(() => {
+        remaining--;
+        if (timerEl) timerEl.textContent = remaining;
+        if (remaining <= 0) { clearInterval(rrTimerInterval); rrTimerInterval = null; }
+    }, 1000);
+}
+
+function stopRRTimer() {
+    if (rrTimerInterval) { clearInterval(rrTimerInterval); rrTimerInterval = null; }
+    const t = document.getElementById('rrTimer'); if (t) t.textContent = '20';
+}
+
+async function resolvePassengerLocation(lat, lng) {
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+        const d = await res.json();
+        return d.address.village || d.address.suburb || d.address.neighbourhood || d.address.town || d.address.city || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    } catch(e) { return `${lat.toFixed(4)}, ${lng.toFixed(4)}`; }
 }
 
 // Incoming ride request from user
-socket.on('incoming-ride-request', (data) => {
-    if (currentRoute && data.routeId === currentRoute.id) {
-        currentRequest = data;
+socket.on('incoming-ride-request', async (data) => {
+    if (!currentRoute || data.routeId !== currentRoute.id) return;
+    currentRequest = data;
 
-        const availableSeats = currentRoute.total_seats - currentRoute.filled_seats;
-        const passengers = data.passengers || data.seats; // fallback if old client
+    const availableSeats = currentRoute.total_seats - currentRoute.filled_seats;
+    const passengers = data.passengers || data.seats;
 
-        document.getElementById('requestName').innerText = data.name;
-        document.getElementById('requestPhone').innerText = data.phone;
-        document.getElementById('requestPassengers').innerText = passengers;
-        document.getElementById('requestSeatsBadge').innerText = data.seats;
+    // Fill modal fields
+    const setText = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+    setText('requestName', data.name);
+    setText('requestPhone', data.phone);
+    setText('requestPassengers', passengers);
+    setText('requestSeatsBadge', data.seats);
+    setText('rrAvailSeats', availableSeats);
 
-        // Show selected seat numbers if available
-        const seatNumsEl = document.getElementById('requestSeatNumbers');
-        if (seatNumsEl && data.seatNumbers && data.seatNumbers.length > 0) {
-            seatNumsEl.style.display = 'block';
-            seatNumsEl.innerText = `🎯 Selected Seats: ${data.seatNumbers.join(', ')}`;
-        } else if (seatNumsEl) {
-            seatNumsEl.style.display = 'none';
-        }
-
-        document.getElementById('availableSeatsInfo').innerText =
-            `✅ Aapki gaadi mein abhi ${availableSeats} seat(s) available hain`;
-
-        // Warn if not enough seats
-        if (data.seats > availableSeats) {
-            document.getElementById('availableSeatsInfo').style.background = 'rgba(239,68,68,0.1)';
-            document.getElementById('availableSeatsInfo').style.borderColor = 'var(--danger)';
-            document.getElementById('availableSeatsInfo').style.color = 'var(--danger)';
-            document.getElementById('availableSeatsInfo').innerText =
-                `⚠️ Sirf ${availableSeats} seat available hai, par ${data.seats} maangi gayi!`;
-        } else {
-            document.getElementById('availableSeatsInfo').style.background = 'rgba(16,185,129,0.1)';
-            document.getElementById('availableSeatsInfo').style.borderColor = 'var(--success)';
-            document.getElementById('availableSeatsInfo').style.color = 'var(--success)';
-        }
-
-        document.getElementById('rideRequestModal').style.display = 'flex';
-
-        // Auto dismiss after 20 seconds
-        requestTimeout = setTimeout(() => {
-            respondToRide(false);
-        }, 20000);
-
-        // Plot User Marker
-        if (data.userLat && data.userLng && driverMap) {
-            if (userMarkers[data.userId]) {
-                driverMap.removeLayer(userMarkers[data.userId]);
-            }
-
-            const userIcon = L.divIcon({
-                className: 'custom-user-marker',
-                html: `<div style="font-size: 28px; filter: hue-rotate(200deg);">🧍‍♂️</div>`,
-                iconSize: [30, 30],
-                iconAnchor: [15, 30]
+    // Resolve passenger location name
+    const locEl = document.getElementById('requestLocation');
+    if (locEl) {
+        locEl.textContent = 'Detecting location...';
+        if (data.userLat && data.userLng) {
+            resolvePassengerLocation(data.userLat, data.userLng).then(name => {
+                locEl.textContent = `\ud83d\udccd ${name}`;
             });
+        } else { locEl.textContent = 'Location not available'; }
+    }
 
-            userMarkers[data.userId] = L.marker([data.userLat, data.userLng], { icon: userIcon })
-                .addTo(driverMap)
-                .bindPopup(`Requested by: ${data.name}`).openPopup();
+    // Seat numbers
+    const seatNumsEl = document.getElementById('requestSeatNumbers');
+    if (seatNumsEl && data.seatNumbers && data.seatNumbers.length > 0) {
+        seatNumsEl.style.display = 'block';
+        seatNumsEl.innerHTML = `\ud83c\udfaf Selected Seats: <strong>${data.seatNumbers.join(', ')}</strong>`;
+    } else if (seatNumsEl) { seatNumsEl.style.display = 'none'; }
 
-            // Fit bounds
-            if (driverMarker) {
-                const bounds = L.latLngBounds([driverMarker.getLatLng(), [data.userLat, data.userLng]]);
-                driverMap.fitBounds(bounds, { padding: [50, 50] });
+    // Availability indicator
+    const availEl = document.getElementById('availableSeatsInfo');
+    if (availEl) {
+        if (data.seats > availableSeats) {
+            availEl.className = 'rr-avail warn';
+            availEl.innerHTML = `\u26a0\ufe0f Sirf ${availableSeats} seat available, par ${data.seats} maangi gayi!`;
+        } else {
+            availEl.className = 'rr-avail ok';
+            availEl.innerHTML = `\u2705 ${availableSeats} seats available hain`;
+        }
+    }
+
+    // Show bottom sheet + countdown
+    const modal = document.getElementById('rideRequestModal');
+    modal.classList.add('open');
+    const bar = document.getElementById('rrCountdownBar');
+    if (bar) { bar.style.animation = 'none'; bar.offsetHeight; bar.style.animation = ''; }
+    startRRTimer();
+
+    // Auto dismiss after 20 seconds
+    requestTimeout = setTimeout(() => respondToRide(false), 20000);
+
+    // Add to passenger queue sidebar
+    if (typeof addToQueue === 'function') addToQueue(data);
+
+    // Plot premium marker on map
+    if (data.userLat && data.userLng) {
+        if (driverMap) {
+            if (typeof plotPassengerOnMap === 'function') {
+                plotPassengerOnMap(data, 'pending');
+            } else {
+                // Fallback original marker
+                if (userMarkers[data.userId]) driverMap.removeLayer(userMarkers[data.userId]);
+                const userIcon = L.divIcon({
+                    className: '',
+                    html: `<div style="position:relative"><div class="marker-passenger marker-pending">\ud83e\uddd1</div><div class="marker-label">${data.name.split(' ')[0]}</div></div>`,
+                    iconSize: [40, 50], iconAnchor: [18, 36]
+                });
+                userMarkers[data.userId] = L.marker([data.userLat, data.userLng], { icon: userIcon })
+                    .addTo(driverMap)
+                    .bindPopup(`<div class="pop-name">\ud83e\uddd1 ${data.name}</div><div class="pop-info">\ud83d\udcde ${data.phone}</div><div class="pop-info">\ud83d\udcba ${data.seats} seat(s) \u2022 \u23f3 Pending</div>`);
+                if (driverMarker) {
+                    const bounds = L.latLngBounds([driverMarker.getLatLng(), [data.userLat, data.userLng]]);
+                    driverMap.fitBounds(bounds, { padding: [60, 60] });
+                }
             }
         }
     }
+
+    showToast(`\ud83d\udd14 New request from ${data.name}! (${data.seats} seat${data.seats > 1 ? 's' : ''})`, 'warning');
 });
 
 // ─── Autocomplete with Map Integration ───────────────────────

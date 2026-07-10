@@ -1,112 +1,578 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard – Eye In</title>
-    <link rel="stylesheet" href="/css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard – Eye In</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <meta name="theme-color" content="#0a0e17">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0e17; color: #f1f5f9; font-family: 'Inter', sans-serif; overflow-x: hidden; min-height: 100vh; }
+
+    /* ── Sidebar + Layout ─────────────────────────────────── */
+    .admin-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 240px;
+      background: #0d1117;
+      border-right: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 200;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 20px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      text-decoration: none;
+    }
+    .sidebar-logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg,#6366f1,#8b5cf6);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    }
+    .sidebar-logo-text {
+      font-family:'Outfit',sans-serif; font-size: 1.2rem; font-weight: 700;
+      background: linear-gradient(135deg,#6366f1,#a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .sidebar-badge {
+      font-size: 0.6rem; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3);
+      color: #a78bfa; border-radius: 4px; padding: 1px 5px; font-weight: 700; text-transform: uppercase;
+    }
+
+    .sidebar-nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
+    .sidebar-section-label {
+      font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; color: #334155;
+      padding: 8px 8px 4px; font-weight: 700;
+    }
+    .sidebar-nav-btn {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; padding: 9px 12px; border-radius: 10px;
+      background: none; border: none; color: #64748b;
+      font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 500;
+      cursor: pointer; transition: all 0.2s; text-align: left; margin-bottom: 2px;
+      text-decoration: none;
+    }
+    .sidebar-nav-btn:hover { background: rgba(255,255,255,0.04); color: #94a3b8; }
+    .sidebar-nav-btn.active {
+      background: rgba(99,102,241,0.12); color: #a78bfa;
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .sidebar-nav-btn .nav-icon { font-size: 1rem; }
+    .sidebar-nav-btn .nav-badge {
+      margin-left: auto; background: rgba(99,102,241,0.2); color: #a78bfa;
+      border-radius: 6px; padding: 1px 6px; font-size: 0.7rem; font-weight: 700;
+    }
+    .sidebar-nav-btn .nav-badge.danger { background: rgba(239,68,68,0.15); color: #f87171; }
+
+    .sidebar-bottom { padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.06); }
+    .sidebar-user-pill {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 10px;
+      background: rgba(255,255,255,0.03);
+      margin-bottom: 6px;
+    }
+    .sidebar-user-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#6366f1,#8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; flex-shrink: 0; }
+    .sidebar-user-name { font-size: 0.78rem; font-weight: 600; color: #94a3b8; }
+    .sidebar-user-role { font-size: 0.65rem; color: #475569; }
+    .btn-logout {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      padding: 9px 12px; border-radius: 10px;
+      background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15);
+      color: #ef4444; font-family:'Inter',sans-serif; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-logout:hover { background: rgba(239,68,68,0.12); }
+
+    /* ── Main Content ─────────────────────────────────────── */
+    .admin-main {
+      flex: 1;
+      margin-left: 240px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top Bar ──────────────────────────────────────────── */
+    .admin-topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,14,23,0.95); backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 0 24px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .hamburger-btn {
+      display: none; width: 36px; height: 36px; border-radius: 8px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+      color: #94a3b8; font-size: 1.1rem; cursor: pointer;
+      align-items: center; justify-content: center;
+    }
+    .topbar-title { font-family:'Outfit',sans-serif; font-size: 1.1rem; font-weight: 700; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .refresh-badge {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 0.75rem; color: #64748b;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px; padding: 5px 10px;
+    }
+    .refresh-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: liveBlink 1.5s infinite; }
+    @keyframes liveBlink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .refresh-btn {
+      padding: 6px 12px; border-radius: 8px;
+      background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2);
+      color: #a78bfa; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .refresh-btn:hover { background: rgba(99,102,241,0.15); }
+
+    /* ── Content Area ─────────────────────────────────────── */
+    .admin-content { padding: 24px; flex: 1; }
+
+    /* Tab panes */
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── Stats Grid ───────────────────────────────────────── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 14px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px; padding: 18px 20px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .stat-card.purple::before { background: linear-gradient(90deg,#6366f1,#a78bfa); }
+    .stat-card.blue::before   { background: linear-gradient(90deg,#3b82f6,#60a5fa); }
+    .stat-card.green::before  { background: linear-gradient(90deg,#10b981,#34d399); }
+    .stat-card.orange::before { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.3); }
+    .stat-card:hover::before { opacity: 1; }
+    .stat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .stat-card-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+    .stat-card-icon.purple { background: rgba(99,102,241,0.12); }
+    .stat-card-icon.blue   { background: rgba(59,130,246,0.12); }
+    .stat-card-icon.green  { background: rgba(16,185,129,0.12); }
+    .stat-card-icon.orange { background: rgba(245,158,11,0.12); }
+    .stat-card-trend { font-size: 0.72rem; padding: 2px 7px; border-radius: 8px; font-weight: 600; }
+    .stat-card-trend.up   { background: rgba(16,185,129,0.1); color: #10b981; }
+    .stat-card-trend.live { background: rgba(99,102,241,0.1); color: #a78bfa; }
+    .stat-card-value { font-family:'Outfit',sans-serif; font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+    .stat-card-value.purple { color: #a78bfa; }
+    .stat-card-value.blue   { color: #60a5fa; }
+    .stat-card-value.green  { color: #10b981; }
+    .stat-card-value.orange { color: #f59e0b; }
+    .stat-card-label { font-size: 0.78rem; color: #64748b; }
+
+    /* ── Data Table Container ─────────────────────────────── */
+    .data-section {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px; margin-bottom: 20px; overflow: hidden;
+    }
+    .data-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.015);
+    }
+    .data-section-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.92rem; font-weight: 700; color: #e2e8f0;
+    }
+    .data-section-actions { display: flex; align-items: center; gap: 8px; }
+    .search-box {
+      background: rgba(0,0,0,0.3); border: 1.5px solid rgba(255,255,255,0.07);
+      border-radius: 9px; padding: 6px 12px; color: #f1f5f9;
+      font-family:'Inter',sans-serif; font-size: 0.8rem; outline: none; width: 180px;
+      transition: border-color 0.2s;
+    }
+    .search-box:focus { border-color: rgba(99,102,241,0.5); }
+    .search-box::placeholder { color: #334155; }
+
+    .data-table-wrap { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table thead { background: rgba(0,0,0,0.2); }
+    .data-table th {
+      padding: 11px 16px; text-align: left;
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px;
+      color: #475569; font-weight: 700;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      white-space: nowrap;
+    }
+    .data-table td {
+      padding: 12px 16px;
+      font-size: 0.83rem; color: #94a3b8;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+    }
+    .data-table tbody tr { transition: background 0.15s; }
+    .data-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+
+    /* Status badges */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 8px; font-size: 0.72rem; font-weight: 700;
+    }
+    .status-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .status-badge.active   { background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+    .status-badge.inactive { background: rgba(100,116,139,0.1); color: #64748b; border: 1px solid rgba(100,116,139,0.2); }
+    .status-badge.blocked  { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+
+    /* Action buttons */
+    .btn-sm {
+      padding: 5px 10px; border-radius: 7px; font-size: 0.72rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; font-family:'Inter',sans-serif;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn-sm-danger  { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #ef4444; }
+    .btn-sm-danger:hover  { background: rgba(239,68,68,0.15); }
+    .btn-sm-success { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); color: #10b981; }
+    .btn-sm-success:hover { background: rgba(16,185,129,0.15); }
+    .btn-sm-purple  { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); color: #a78bfa; }
+    .btn-sm-purple:hover  { background: rgba(99,102,241,0.15); }
+
+    /* ── Dashboard: Chart section ────────────────────────── */
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+    .chart-card {
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px; padding: 18px; overflow: hidden;
+    }
+    .chart-title { font-size: 0.85rem; font-weight: 700; color: #e2e8f0; margin-bottom: 16px; display: flex; align-items: center; gap: 6px; }
+
+    /* CSS Bar chart */
+    .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+    .bar-row { display: grid; grid-template-columns: 90px 1fr 48px; gap: 8px; align-items: center; font-size: 0.78rem; }
+    .bar-label { color: #64748b; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bar-track { background: rgba(255,255,255,0.05); border-radius: 4px; height: 8px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg,#6366f1,#a78bfa); transition: width 0.8s ease; }
+    .bar-value { color: #94a3b8; font-weight: 600; text-align: right; }
+
+    /* Vehicle type distribution */
+    .vtype-list { display: flex; flex-direction: column; gap: 12px; }
+    .vtype-row { display: flex; align-items: center; gap: 10px; }
+    .vtype-icon { font-size: 1.3rem; width: 32px; text-align: center; }
+    .vtype-info { flex: 1; }
+    .vtype-name { font-size: 0.82rem; font-weight: 600; color: #e2e8f0; margin-bottom: 3px; }
+    .vtype-bar-track { background: rgba(255,255,255,0.05); border-radius: 3px; height: 6px; overflow: hidden; }
+    .vtype-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+    .vtype-bar-fill.auto  { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
+    .vtype-bar-fill.bus   { background: linear-gradient(90deg,#3b82f6,#60a5fa); }
+    .vtype-bar-fill.car   { background: linear-gradient(90deg,#10b981,#34d399); }
+    .vtype-count { font-size: 0.82rem; font-weight: 700; color: #94a3b8; min-width: 32px; text-align: right; }
+
+    /* ── Feedback Cards ───────────────────────────────────── */
+    .feedback-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 12px; padding: 14px; }
+    .feedback-card {
+      background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; padding: 14px; transition: border-color 0.2s;
+    }
+    .feedback-card:hover { border-color: rgba(99,102,241,0.25); }
+    .feedback-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .feedback-type-tag { padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: capitalize; }
+    .feedback-type-tag.suggestion { background: rgba(99,102,241,0.12); color: #a78bfa; }
+    .feedback-type-tag.bug        { background: rgba(239,68,68,0.12); color: #f87171; }
+    .feedback-type-tag.praise     { background: rgba(245,158,11,0.12); color: #fbbf24; }
+    .feedback-type-tag.complaint  { background: rgba(239,68,68,0.08); color: #fca5a5; }
+    .feedback-date { font-size: 0.7rem; color: #475569; }
+    .feedback-message { font-size: 0.83rem; color: #94a3b8; line-height: 1.5; margin-bottom: 10px; }
+    .feedback-sender { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #475569; }
+    .feedback-sender-avatar { width: 22px; height: 22px; border-radius: 50%; background: rgba(99,102,241,0.2); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; }
+
+    /* ── Toast ────────────────────────────────────────────── */
+    #toastBox { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column-reverse; gap: 8px; align-items: flex-end; pointer-events: none; }
+    .toast-item { display: flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 12px; font-size: 0.88rem; font-weight: 500; min-width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); backdrop-filter: blur(10px); opacity: 0; transform: translateY(10px) scale(0.96); transition: all 0.3s ease; pointer-events: auto; }
+    .toast-item.show { opacity: 1; transform: translateY(0) scale(1); }
+    .toast-item.success { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+    .toast-item.error   { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .toast-item.info    { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
+
+    /* ── Empty rows ────────────────────────────────────────── */
+    .empty-row { text-align: center; padding: 48px; color: #334155; }
+    .empty-row-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .empty-row-text { font-size: 0.9rem; }
+
+    /* Loading state in table */
+    .loading-row td { padding: 48px; text-align: center; }
+    .spinner-sm { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.1); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Mobile Responsive ────────────────────────────────── */
+    @media (max-width: 900px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .admin-main { margin-left: 0; }
+      .hamburger-btn { display: flex; }
+      .sidebar-overlay { display: block; }
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .charts-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 540px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .admin-content { padding: 14px; }
+      .stat-card { padding: 14px; }
+      .stat-card-value { font-size: 1.6rem; }
+      .data-table th, .data-table td { padding: 10px 10px; font-size: 0.78rem; }
+      .admin-topbar { padding: 0 14px; }
+    }
+
+    /* Overlay for sidebar on mobile */
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0; z-index: 199;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+    }
+    .sidebar-overlay.open { display: block; }
+  </style>
 </head>
 
 <body>
-    <div class="bg-animate"></div>
+  <!-- Sidebar Overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-    <!-- Navbar -->
-    <nav class="navbar">
-        <a href="/" class="navbar-brand">
-            <div class="logo-icon">👁️</div>
-            <span class="logo-text">Eye In</span>
-        </a>
-        <div class="navbar-links">
-            <span style="color: var(--text-muted); font-size: 0.85rem;">⚙️ Admin Panel</span>
-            <a href="#" onclick="adminLogout()" style="color: var(--danger);">Logout</a>
+  <div class="admin-layout">
+    <!-- ── Sidebar ─────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+      <a href="/" class="sidebar-logo">
+        <div class="sidebar-logo-icon">👁️</div>
+        <span class="sidebar-logo-text">Eye In</span>
+        <span class="sidebar-badge">Admin</span>
+      </a>
+
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-label">Main</div>
+        <button class="sidebar-nav-btn active" id="nav-dashboard" onclick="switchTab('dashboard')">
+          <span class="nav-icon">📊</span> Dashboard
+        </button>
+        <button class="sidebar-nav-btn" id="nav-drivers" onclick="switchTab('drivers')">
+          <span class="nav-icon">👨‍✈️</span> Drivers
+          <span class="nav-badge" id="driverCountBadge">–</span>
+        </button>
+        <button class="sidebar-nav-btn" id="nav-routes" onclick="switchTab('routes')">
+          <span class="nav-icon">📍</span> Routes
+          <span class="nav-badge" id="routeCountBadge">–</span>
+        </button>
+        <div class="sidebar-section-label" style="margin-top:8px;">Reports</div>
+        <button class="sidebar-nav-btn" id="nav-feedback" onclick="switchTab('feedback')">
+          <span class="nav-icon">💬</span> Feedback
+          <span class="nav-badge danger" id="feedbackCountBadge">–</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="sidebar-user-pill">
+          <div class="sidebar-user-avatar">⚙️</div>
+          <div>
+            <div class="sidebar-user-name">Administrator</div>
+            <div class="sidebar-user-role">Eye In Admin Panel</div>
+          </div>
         </div>
-    </nav>
+        <button class="btn-logout" onclick="adminLogout()">🚪 Logout</button>
+      </div>
+    </aside>
 
-    <!-- Dashboard -->
-    <div class="dashboard">
-        <div class="dashboard-content">
-            <div class="dashboard-header">
-                <h1>⚙️ Admin Dashboard</h1>
-                <span style="color: var(--text-muted); font-size: 0.85rem;">Auto-refresh: 30s</span>
+    <!-- ── Main Area ───────────────────────────────────────── -->
+    <div class="admin-main">
+      <!-- Top Bar -->
+      <div class="admin-topbar">
+        <div class="topbar-left">
+          <button class="hamburger-btn" onclick="openSidebar()">☰</button>
+          <span class="topbar-title" id="topbarTitle">📊 Dashboard</span>
+        </div>
+        <div class="topbar-right">
+          <div class="refresh-badge">
+            <div class="refresh-dot"></div>
+            <span id="lastRefreshText">Refreshing...</span>
+          </div>
+          <button class="refresh-btn" onclick="loadDashboard()">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="admin-content">
+
+        <!-- ── DASHBOARD TAB ────────────────────────────────── -->
+        <div class="tab-pane active" id="pane-dashboard">
+          <!-- Stats -->
+          <div class="stats-grid" id="adminStats">
+            <div class="stat-card purple">
+              <div class="stat-card-top">
+                <div class="stat-card-icon purple">🚀</div>
+                <div class="stat-card-trend live">Live</div>
+              </div>
+              <div class="stat-card-value purple" id="statActiveRoutes">–</div>
+              <div class="stat-card-label">Today's Rides</div>
             </div>
-
-            <!-- Stats -->
-            <div class="stats-grid" id="adminStats">
-                <div class="stat-card">
-                    <div class="stat-icon purple">📍</div>
-                    <div class="stat-value" id="statActiveRoutes">–</div>
-                    <div class="stat-label">Active Routes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon blue">👨‍✈️</div>
-                    <div class="stat-value" id="statTotalDrivers">–</div>
-                    <div class="stat-label">Total Drivers</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon green">🚗</div>
-                    <div class="stat-value" id="statActiveVehicles">–</div>
-                    <div class="stat-label">Active Vehicles</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon orange">🚐</div>
-                    <div class="stat-value" id="statTotalVehicles">–</div>
-                    <div class="stat-label">Total Vehicles</div>
-                </div>
+            <div class="stat-card green">
+              <div class="stat-card-top">
+                <div class="stat-card-icon green">🚗</div>
+                <div class="stat-card-trend live">Live</div>
+              </div>
+              <div class="stat-card-value green" id="statActiveVehicles">–</div>
+              <div class="stat-card-label">Active Vehicles</div>
             </div>
-
-            <!-- Active Routes Table -->
-            <div class="data-table-wrap" style="margin-bottom: 24px;">
-                <h3>📍 Active Routes</h3>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Driver</th>
-                            <th>Vehicle</th>
-                            <th>Route</th>
-                            <th>Fare</th>
-                            <th>Seats</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="routesTableBody">
-                        <tr>
-                            <td colspan="8" style="text-align:center; padding: 40px;">
-                                <div class="spinner" style="margin: 0 auto;"></div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="stat-card blue">
+              <div class="stat-card-top">
+                <div class="stat-card-icon blue">👨‍✈️</div>
+                <div class="stat-card-trend up">↑ Growing</div>
+              </div>
+              <div class="stat-card-value blue" id="statTotalDrivers">–</div>
+              <div class="stat-card-label">Total Drivers</div>
             </div>
+            <div class="stat-card orange">
+              <div class="stat-card-top">
+                <div class="stat-card-icon orange">💰</div>
+                <div class="stat-card-trend up">Today</div>
+              </div>
+              <div class="stat-card-value orange" id="statRevenue">₹–</div>
+              <div class="stat-card-label">Total Revenue</div>
+            </div>
+          </div>
 
-            <!-- Drivers Table -->
+          <!-- Charts Row -->
+          <div class="charts-row">
+            <!-- Top Routes Bar Chart -->
+            <div class="chart-card">
+              <div class="chart-title">📍 Top Routes</div>
+              <div class="bar-chart" id="topRoutesChart">
+                <div style="color:#334155;font-size:0.82rem;text-align:center;padding:20px;">Loading...</div>
+              </div>
+            </div>
+            <!-- Vehicle Type Distribution -->
+            <div class="chart-card">
+              <div class="chart-title">🚦 Vehicle Type Distribution</div>
+              <div class="vtype-list" id="vtypeChart">
+                <div style="color:#334155;font-size:0.82rem;text-align:center;padding:20px;">Loading...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Rides Table -->
+          <div class="data-section">
+            <div class="data-section-header">
+              <div class="data-section-title">📋 Recent Rides (Last 10)</div>
+            </div>
             <div class="data-table-wrap">
-                <h3>👨‍✈️ Registered Drivers</h3>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Phone</th>
-                            <th>Vehicle Number</th>
-                            <th>Vehicle Type</th>
-                        </tr>
-                    </thead>
-                    <tbody id="driversTableBody">
-                        <tr>
-                            <td colspan="5" style="text-align:center; padding: 40px;">
-                                <div class="spinner" style="margin: 0 auto;"></div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Passenger</th>
+                    <th>Route</th>
+                    <th>Driver</th>
+                    <th>Fare</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="recentRidesBody">
+                  <tr class="loading-row"><td colspan="7"><div class="spinner-sm"></div></td></tr>
+                </tbody>
+              </table>
             </div>
+          </div>
         </div>
-    </div>
 
-    <script src="/js/admin.js"></script>
+        <!-- ── DRIVERS TAB ──────────────────────────────────── -->
+        <div class="tab-pane" id="pane-drivers">
+          <div class="data-section">
+            <div class="data-section-header">
+              <div class="data-section-title">👨‍✈️ Registered Drivers</div>
+              <div class="data-section-actions">
+                <input type="text" class="search-box" id="driverSearch" placeholder="🔍 Search driver..." oninput="filterDrivers()">
+              </div>
+            </div>
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Vehicle</th>
+                    <th>Type</th>
+                    <th>Rating</th>
+                    <th>Rides</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="driversTableBody">
+                  <tr class="loading-row"><td colspan="9"><div class="spinner-sm"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ROUTES TAB ───────────────────────────────────── -->
+        <div class="tab-pane" id="pane-routes">
+          <div class="data-section">
+            <div class="data-section-header">
+              <div class="data-section-title">📍 Active Routes</div>
+              <div class="data-section-actions">
+                <span style="font-size:0.75rem;color:#64748b;" id="routesCountText">Loading...</span>
+              </div>
+            </div>
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Driver</th>
+                    <th>Vehicle</th>
+                    <th>Route</th>
+                    <th>Fare</th>
+                    <th>Seats</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="routesTableBody">
+                  <tr class="loading-row"><td colspan="8"><div class="spinner-sm"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── FEEDBACK TAB ─────────────────────────────────── -->
+        <div class="tab-pane" id="pane-feedback">
+          <div class="data-section">
+            <div class="data-section-header">
+              <div class="data-section-title">💬 User Feedback</div>
+              <div class="data-section-actions">
+                <span style="font-size:0.75rem;color:#64748b;" id="feedbackCountText">Loading...</span>
+              </div>
+            </div>
+            <div class="feedback-grid" id="feedbackGrid">
+              <div style="text-align:center;padding:40px;color:#334155;grid-column:1/-1;"><div class="spinner-sm"></div></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /admin-content -->
+    </div><!-- /admin-main -->
+  </div><!-- /admin-layout -->
+
+  <!-- Toast Container -->
+  <div id="toastBox"></div>
+
+  <script src="/js/admin.js"></script>
 </body>
-
 </html>

@@ -3,18 +3,19 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <meta name="description"
     content="Eye In - Smart local transport visibility platform. See live seat availability, routes, and fares in real-time.">
   <title>Eye In – See Your Ride Before You Board</title>
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/home.css">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192x192.png">
   <link rel="apple-touch-icon" href="/img/icon-192x192.png">
-  <meta name="theme-color" content="#3b82f6">
+  <meta name="theme-color" content="#0a0e17">
 </head>
 
-<body>
+<body class="home-page">
   <div class="bg-animate"></div>
 
   <!-- Navbar -->
@@ -23,232 +24,393 @@
       <div class="logo-icon">👁️</div>
       <span class="logo-text">Eye In</span>
     </a>
-    <div class="navbar-links" style="display: flex; align-items: center; gap: 12px;">
-      <button onclick="openUserHistory()" style="background: rgba(59,130,246,0.1); border: 1px solid var(--primary); color: var(--primary); border-radius: 6px; padding: 6px 10px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: inherit; font-weight: 500;">📜 My Rides</button>
-      <a href="/driver-login.html">🚗 Driver</a>
-      <a href="/admin-login.html">⚙️ Admin</a>
+    <div class="navbar-actions">
+      <button onclick="openUserHistory()" class="nav-btn" id="myRidesBtn">
+        <span class="nav-btn-icon">🚌</span>
+        <span class="nav-btn-label">My Rides</span>
+      </button>
+      <a href="/driver-login.html" class="nav-btn">
+        <span class="nav-btn-icon">🚗</span>
+        <span class="nav-btn-label">Driver</span>
+      </a>
+      <a href="/admin-login.html" class="nav-btn nav-btn-ghost">
+        <span class="nav-btn-icon">⚙️</span>
+        <span class="nav-btn-label">Admin</span>
+      </a>
     </div>
   </nav>
 
   <!-- Hero Section -->
-  <section class="hero">
-    <div class="hero-content">
-      <div class="hero-badge">🚀 Smart Transport Visibility</div>
+  <main class="home-main">
+    <!-- Left: Branding -->
+    <div class="hero-left">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Live Transport Tracking
+      </div>
       <h1>
-        See Your Ride<br>
-        <span class="gradient-text">Before You Board</span>
+        Apni ride<br>
+        <span class="gradient-text">pehle dekho</span>
+        <br>phir board karo
       </h1>
-      <p>Check live seat availability, routes, and fares of local transport around you. No more waiting in the dark.</p>
+      <p class="hero-desc">
+        Real-time seat availability, routes aur fares — sab ek jagah.<br>
+        Ab wait nahi, sirf smart travel. 🚀
+      </p>
 
-      <!-- Search Box -->
-      <div class="search-box" id="searchBox">
-        <!-- Pickup: Auto-Detect -->
-        <div class="form-group">
-          <div class="autocomplete-wrapper">
-            <div class="input-icon-wrap">
-              <span class="icon" id="autoLocateBtn" onclick="fetchUserLocation()"
-                style="cursor: pointer; z-index: 10; transition: transform 0.2s;"
-                title="Tap to detect Live Location">📍</span>
-              <input type="text" class="form-control" id="pickupInput"
-                placeholder="📡 Aapki location detect ho rahi hai..." value="" autocomplete="off"
-                style="padding-left: 44px; opacity: 0.7;" readonly>
+      <!-- Stats row -->
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="stat-number">500+</span>
+          <span class="stat-label">Rides</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-number">Live</span>
+          <span class="stat-label">Seats</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-number">Free</span>
+          <span class="stat-label">Always</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Search Card -->
+    <div class="hero-right">
+      <div class="search-card" id="searchCard">
+
+        <!-- Card Header -->
+        <div class="search-card-header">
+          <h2>🔍 Route Dhundho</h2>
+          <p>Kahan se kahan jaana hai?</p>
+        </div>
+
+        <!-- Location Inputs -->
+        <div class="location-inputs-container">
+
+          <!-- FROM input -->
+          <div class="location-input-block" id="fromBlock">
+            <div class="location-label">
+              <span class="loc-dot from-dot"></span>
+              Kahan se
             </div>
-            <div class="autocomplete-suggestions" id="pickupSuggestions"></div>
+            <div class="location-input-row">
+              <div class="autocomplete-wrapper">
+                <div class="location-field" id="fromField" onclick="focusFromInput()">
+                  <span class="loc-icon" id="fromIcon">📍</span>
+                  <input
+                    type="text"
+                    id="pickupInput"
+                    class="loc-input"
+                    placeholder="Location detect ho rahi hai..."
+                    autocomplete="off"
+                    readonly
+                  >
+                  <span class="loc-status" id="fromStatus"></span>
+                </div>
+                <div class="autocomplete-suggestions" id="pickupSuggestions"></div>
+              </div>
+              <button class="gps-btn" id="gpsBtn" onclick="fetchUserLocation()" title="Meri location use karo">
+                <span class="gps-icon" id="gpsBtnIcon">🎯</span>
+              </button>
+            </div>
           </div>
-          <!-- Location detecting badge -->
-          <div id="locationBadge" style="
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 6px;
-            font-size: 0.78rem;
-            color: var(--primary);
-            padding-left: 4px;
-          ">
-            <div
-              style="width: 8px; height: 8px; background: var(--primary); border-radius: 50%; animation: pulse 1.2s infinite;">
+
+          <!-- Swap Button -->
+          <div class="swap-row">
+            <div class="route-line"></div>
+            <button class="swap-btn" id="swapBtn" onclick="swapLocations()" title="Swap karo">
+              ⇅
+            </button>
+            <div class="route-line"></div>
+          </div>
+
+          <!-- TO input -->
+          <div class="location-input-block" id="toBlock">
+            <div class="location-label">
+              <span class="loc-dot to-dot"></span>
+              Kahan tak
             </div>
-            Live location detect ho rahi hai...
+            <div class="location-input-row">
+              <div class="autocomplete-wrapper" style="flex:1">
+                <div class="location-field" id="toField">
+                  <span class="loc-icon">🎯</span>
+                  <input
+                    type="text"
+                    id="destinationInput"
+                    class="loc-input"
+                    placeholder="Destination type karo..."
+                    autocomplete="off"
+                  >
+                </div>
+                <div class="autocomplete-suggestions" id="destinationSuggestions"></div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Destination -->
-        <div class="form-group">
-          <div class="autocomplete-wrapper">
-            <div class="input-icon-wrap">
-              <span class="icon">🎯</span>
-              <input type="text" class="form-control" id="destinationInput"
-                placeholder="Kahan jaana hai? (e.g. Kota Junction)" value="" autocomplete="off">
-            </div>
-            <div class="autocomplete-suggestions" id="destinationSuggestions"></div>
+        <!-- Quick Destinations -->
+        <div class="quick-section">
+          <div class="quick-label">⚡ Popular Stops</div>
+          <div class="quick-chips" id="quickChips">
+            <button class="quick-chip" onclick="setDestination('Kota Junction')">🚉 Kota Junction</button>
+            <button class="quick-chip" onclick="setDestination('DCM Chauraha')">🔵 DCM Chauraha</button>
+            <button class="quick-chip" onclick="setDestination('Vigyan Nagar')">🏙️ Vigyan Nagar</button>
+            <button class="quick-chip" onclick="setDestination('Talwandi')">🌿 Talwandi</button>
+            <button class="quick-chip" onclick="setDestination('Rangbari')">🏘️ Rangbari</button>
+            <button class="quick-chip" onclick="setDestination('Borkhera')">🏭 Borkhera</button>
           </div>
         </div>
 
-        <button class="btn btn-primary btn-block btn-lg" id="searchBtn" onclick="searchRoute()">
-          🔍 Search Route
+        <!-- Search Button -->
+        <button class="search-btn" id="searchBtn" onclick="searchRoute()">
+          <span class="search-btn-icon">🔍</span>
+          <span>Route Search Karo</span>
+          <span class="search-btn-arrow">→</span>
         </button>
-      </div>
-    </div>
-  </section>
 
-  <!-- Features -->
-  <section style="padding: 80px 40px; max-width: 1000px; margin: 0 auto;">
-    <div style="text-align: center; margin-bottom: 48px;">
-      <h2 style="font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; margin-bottom: 12px;">How <span
-          class="gradient-text">Eye In</span> Works</h2>
-      <p style="color: var(--text-muted); font-size: 1rem;">Simple 3-step process to find your ride</p>
+        <!-- Location Permission Notice -->
+        <div id="locationNotice" class="location-notice" style="display:none">
+          <span>📡</span>
+          <span id="locationNoticeText">Live location detect ho rahi hai...</span>
+        </div>
+
+      </div>
     </div>
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
-      <div class="glass-card" style="text-align: center;">
-        <div style="font-size: 2.5rem; margin-bottom: 16px;">🔍</div>
-        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">Search Route</h3>
-        <p style="color: var(--text-secondary); font-size: 0.9rem;">Enter your pickup and destination to find available
-          transport.</p>
+  </main>
+
+  <!-- How it Works Section -->
+  <section class="how-section">
+    <div class="how-inner">
+      <div class="how-heading">
+        <h2>Kaise kaam karta hai <span class="gradient-text">Eye In</span>?</h2>
+        <p>Sirf 3 steps mein apni ride track karo</p>
       </div>
-      <div class="glass-card" style="text-align: center;">
-        <div style="font-size: 2.5rem; margin-bottom: 16px;">🗺️</div>
-        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">View on Map</h3>
-        <p style="color: var(--text-secondary); font-size: 0.9rem;">See vehicles on a live map with their exact
-          locations.</p>
-      </div>
-      <div class="glass-card" style="text-align: center;">
-        <div style="font-size: 2.5rem; margin-bottom: 16px;">💺</div>
-        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">Check Seats</h3>
-        <p style="color: var(--text-secondary); font-size: 0.9rem;">Click any vehicle to see real-time seat
-          availability.</p>
+      <div class="how-cards">
+        <div class="how-card">
+          <div class="how-step">01</div>
+          <div class="how-icon">🔍</div>
+          <h3>Route Dhundho</h3>
+          <p>Apna pickup aur destination daalke available transport dekho.</p>
+        </div>
+        <div class="how-connector">→</div>
+        <div class="how-card">
+          <div class="how-step">02</div>
+          <div class="how-icon">🗺️</div>
+          <h3>Live Map Dekho</h3>
+          <p>Map pe live vehicles dekho — exactly kahan hain abhi.</p>
+        </div>
+        <div class="how-connector">→</div>
+        <div class="how-card">
+          <div class="how-step">03</div>
+          <div class="how-icon">💺</div>
+          <h3>Seat Check Karo</h3>
+          <p>Kisi bhi vehicle pe tap karo aur real-time seats dekho.</p>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- User Ride History Modal -->
-  <div class="modal-overlay" id="userHistoryModal" style="display: none; z-index: 1000; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); justify-content: center; align-items: center;">
-      <div class="modal-content" style="background: white; border-radius: 12px; max-width: 450px; width: 90%; max-height: 85vh; padding: 24px; position: relative;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-              <h2 style="margin: 0; font-size: 1.5rem;">📜 My Rides</h2>
-              <button onclick="closeUserHistory()" style="background: none; border: none; font-size: 1.8rem; cursor: pointer; color: var(--text-muted);">&times;</button>
-          </div>
-          
-          <div id="userHistoryPhoneSection" style="text-align: center; margin-bottom: 20px;">
-              <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 16px;">Apna phone number daalein purani rides dekhne ke liye:</p>
-              <input type="tel" id="userHistoryPhone" placeholder="Mobile Number" class="form-control" style="margin-bottom: 12px; text-align: center; padding: 12px;">
-              <button class="btn btn-primary" onclick="fetchUserHistory()" style="width: 100%; padding: 12px;">Search Rides</button>
-          </div>
-
-          <div id="userHistoryList" style="display: none; max-height: 50vh; overflow-y: auto;">
-              <!-- Rides injected here -->
-          </div>
+  <div class="modal-overlay" id="userHistoryModal" style="display:none">
+    <div class="history-modal">
+      <div class="history-modal-header">
+        <div class="history-modal-title">
+          <span>🚌</span>
+          <h2>Meri Rides</h2>
+        </div>
+        <button class="modal-close-btn" onclick="closeUserHistory()">✕</button>
       </div>
+
+      <div id="userHistoryPhoneSection">
+        <p class="history-hint">Apna phone number daalein purani rides dekhne ke liye</p>
+        <div class="phone-input-row">
+          <span class="phone-prefix">🇮🇳 +91</span>
+          <input
+            type="tel"
+            id="userHistoryPhone"
+            placeholder="10-digit mobile number"
+            class="phone-input"
+            maxlength="10"
+          >
+        </div>
+        <button class="btn btn-primary btn-block" onclick="fetchUserHistory()" style="margin-top:16px; padding:14px; font-size:1rem;">
+          Rides Dekho 🚀
+        </button>
+      </div>
+
+      <div id="userHistoryList" style="display:none; max-height:55vh; overflow-y:auto; margin-top:16px;">
+        <!-- Rides injected here -->
+      </div>
+    </div>
   </div>
 
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
   <script>
+    // ─── Toast ───────────────────────────────────────────────────
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `home-toast home-toast-${type}`;
+      const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+      toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
+      container.appendChild(toast);
+      // Animate in
+      requestAnimationFrame(() => { toast.classList.add('show'); });
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+      }, 3500);
+    }
+
+    // ─── Route Search ─────────────────────────────────────────────
     function searchRoute() {
       const pickup = document.getElementById('pickupInput').value.trim();
       const destination = document.getElementById('destinationInput').value.trim();
 
-      if (!pickup || !destination) {
-        showToast('Please enter both pickup and destination', 'error');
+      if (!pickup) {
+        showToast('Pehle apna pickup location daalein 📍', 'warning');
+        document.getElementById('fromBlock').classList.add('shake');
+        setTimeout(() => document.getElementById('fromBlock').classList.remove('shake'), 600);
+        return;
+      }
+      if (!destination) {
+        showToast('Destination bhi daalna zaroori hai 🎯', 'warning');
+        document.getElementById('toBlock').classList.add('shake');
+        setTimeout(() => document.getElementById('toBlock').classList.remove('shake'), 600);
         return;
       }
 
-      window.location.href = `/results.html?pickup=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(destination)}`;
+      const btn = document.getElementById('searchBtn');
+      btn.classList.add('loading');
+      btn.innerHTML = '<span class="spinner"></span><span>Searching...</span>';
+
+      setTimeout(() => {
+        window.location.href = `/results.html?pickup=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(destination)}`;
+      }, 600);
     }
 
-    // Enter key support
-    document.getElementById('pickupInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('destinationInput').focus(); });
-    document.getElementById('destinationInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') searchRoute(); });
+    // ─── Swap Locations ──────────────────────────────────────────
+    function swapLocations() {
+      const pickupVal = document.getElementById('pickupInput').value;
+      const destVal = document.getElementById('destinationInput').value;
+      if (!pickupVal && !destVal) return;
 
-    function showToast(msg, type = 'info') {
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
-      toast.innerHTML = msg;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
+      const swapBtn = document.getElementById('swapBtn');
+      swapBtn.classList.add('spinning');
+      setTimeout(() => swapBtn.classList.remove('spinning'), 400);
+
+      document.getElementById('pickupInput').value = destVal;
+      document.getElementById('destinationInput').value = pickupVal;
+      // Make pickup editable if it was readonly
+      if (destVal) {
+        document.getElementById('pickupInput').removeAttribute('readonly');
+        document.getElementById('pickupInput').style.opacity = '1';
+      }
     }
 
-    // Autocomplete Logic
+    // ─── Quick Destination ────────────────────────────────────────
+    function setDestination(name) {
+      const input = document.getElementById('destinationInput');
+      input.value = name;
+      // Animate the selected chip
+      document.querySelectorAll('.quick-chip').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      // Pulse the to field
+      document.getElementById('toBlock').classList.add('highlight');
+      setTimeout(() => document.getElementById('toBlock').classList.remove('highlight'), 800);
+      showToast(`Destination set: ${name} ✅`, 'success');
+    }
+
+    function focusFromInput() {
+      const input = document.getElementById('pickupInput');
+      if (!input.readOnly) input.focus();
+    }
+
+    // ─── Enter Key Support ────────────────────────────────────────
+    document.getElementById('pickupInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') document.getElementById('destinationInput').focus();
+    });
+    document.getElementById('destinationInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') searchRoute();
+    });
+
+    // ─── Autocomplete ─────────────────────────────────────────────
     function setupAutocomplete(inputId, suggestionsId) {
       const input = document.getElementById(inputId);
-      const suggestionsBox = document.getElementById(suggestionsId);
+      const box = document.getElementById(suggestionsId);
       let timeout = null;
 
       input.addEventListener('input', (e) => {
         clearTimeout(timeout);
         const query = e.target.value.trim();
-
-        if (query.length < 3) {
-          suggestionsBox.style.display = 'none';
-          return;
-        }
+        if (query.length < 3) { box.style.display = 'none'; return; }
 
         timeout = setTimeout(async () => {
           try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=5`);
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=6`);
             const data = await res.json();
-
             if (data.length > 0) {
-              suggestionsBox.innerHTML = data.map(place => {
-                const name = place.display_name.split(',').slice(0, 3).join(','); // Keep it concise
-                return `<div class="suggestion-item" data-name="${name}">${name}</div>`;
+              box.innerHTML = data.map(place => {
+                const parts = place.display_name.split(',');
+                const name = parts.slice(0, 2).join(',').trim();
+                const sub = parts.slice(2, 4).join(',').trim();
+                return `<div class="suggestion-item" data-name="${parts.slice(0,3).join(',').trim()}">
+                  <span class="sug-icon">📍</span>
+                  <div class="sug-text">
+                    <span class="sug-main">${name}</span>
+                    <span class="sug-sub">${sub}</span>
+                  </div>
+                </div>`;
               }).join('');
-              suggestionsBox.style.display = 'block';
-
-              // Attach click listeners to new items
-              const items = suggestionsBox.querySelectorAll('.suggestion-item');
-              items.forEach(item => {
+              box.style.display = 'block';
+              box.querySelectorAll('.suggestion-item').forEach(item => {
                 item.addEventListener('click', () => {
                   input.value = item.getAttribute('data-name');
-                  suggestionsBox.style.display = 'none';
+                  box.style.display = 'none';
                 });
               });
-            } else {
-              suggestionsBox.style.display = 'none';
-            }
-          } catch (err) {
-            console.error("Autocomplete error:", err);
-          }
-        }, 400); // 400ms debounce
+            } else { box.style.display = 'none'; }
+          } catch (err) { console.error('Autocomplete error:', err); }
+        }, 380);
       });
 
-      // Hide suggestions when clicking outside
       document.addEventListener('click', (e) => {
-        if (!input.contains(e.target) && !suggestionsBox.contains(e.target)) {
-          suggestionsBox.style.display = 'none';
-        }
+        if (!input.contains(e.target) && !box.contains(e.target)) box.style.display = 'none';
       });
     }
 
     setupAutocomplete('pickupInput', 'pickupSuggestions');
     setupAutocomplete('destinationInput', 'destinationSuggestions');
 
-    // ─── Auto-Detect User Location on Page Load ───────────────
+    // ─── GPS / Auto Detect ─────────────────────────────────────────
     const fetchUserLocation = () => {
-      const pickupInput = document.getElementById('pickupInput');
-      const locationBadge = document.getElementById('locationBadge');
-      const pinIcon = document.getElementById('autoLocateBtn');
+      const input = document.getElementById('pickupInput');
+      const gpsIcon = document.getElementById('gpsBtnIcon');
+      const notice = document.getElementById('locationNotice');
+      const noticeText = document.getElementById('locationNoticeText');
+      const fromIcon = document.getElementById('fromIcon');
 
-      // Animate pin icon
-      pinIcon.style.animation = 'spin 1s linear infinite';
+      gpsIcon.textContent = '⏳';
+      notice.style.display = 'flex';
+      noticeText.textContent = 'Live location detect ho rahi hai...';
+      document.getElementById('gpsBtn').classList.add('detecting');
 
       if (!navigator.geolocation) {
-        // Geolocation not supported – allow manual input
-        pickupInput.placeholder = 'Enter pickup location...';
-        pickupInput.removeAttribute('readonly');
-        pickupInput.style.opacity = '1';
-        locationBadge.style.display = 'none';
-        pinIcon.style.animation = '';
-        setupAutocomplete('pickupInput', 'pickupSuggestions');
-        showToast('Geolocation supported nahi hai. Manually enter karein.', 'error');
+        enableManualInput('Geolocation supported nahi hai');
         return;
       }
 
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
           try {
+            const { latitude: lat, longitude: lng } = pos.coords;
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
             const data = await res.json();
-            // Prefer village/suburb > city area > city > state
             const placeName =
               data.address.village ||
               data.address.suburb ||
@@ -259,79 +421,207 @@
               data.address.state ||
               'Current Location';
 
-            pickupInput.value = placeName;
-            pickupInput.placeholder = 'Enter pickup location...';
-            pickupInput.removeAttribute('readonly');
-            pickupInput.style.opacity = '1';
-            locationBadge.innerHTML = `<span style="color: var(--success)">✅ ${placeName} – detected</span>`;
-            setTimeout(() => { locationBadge.style.display = 'none'; }, 3000);
-            pinIcon.style.animation = '';
-            pinIcon.textContent = '✅';
-            setTimeout(() => { pinIcon.textContent = '📍'; }, 3000);
+            input.value = placeName;
+            input.removeAttribute('readonly');
+            input.style.opacity = '1';
+            fromIcon.textContent = '✅';
+            gpsIcon.textContent = '✅';
+            document.getElementById('gpsBtn').classList.remove('detecting');
+            document.getElementById('gpsBtn').classList.add('detected');
 
-            // Immediately focus destination field
+            noticeText.innerHTML = `<span style="color: var(--success)">📍 ${placeName} – detected!</span>`;
+            setTimeout(() => {
+              notice.style.display = 'none';
+              fromIcon.textContent = '📍';
+              gpsIcon.textContent = '🎯';
+              document.getElementById('gpsBtn').classList.remove('detected');
+            }, 3000);
+
             document.getElementById('destinationInput').focus();
-            showToast('📍 Location detect ho gayi! Ab destination select karein.', 'success');
+            showToast(`📍 Location mili: ${placeName}`, 'success');
 
           } catch (err) {
-            console.error('Reverse geocoding failed', err);
-            pickupInput.placeholder = 'Enter pickup location...';
-            pickupInput.removeAttribute('readonly');
-            pickupInput.style.opacity = '1';
-            locationBadge.style.display = 'none';
-            pinIcon.style.animation = '';
-            setupAutocomplete('pickupInput', 'pickupSuggestions');
+            enableManualInput('Location fetch failed');
           }
         },
         (err) => {
-          console.log('Location error:', err.code, err.message);
-          // Allow manual input on any error
-          pickupInput.placeholder = 'Enter pickup location...';
-          pickupInput.removeAttribute('readonly');
-          pickupInput.style.opacity = '1';
-          locationBadge.style.display = 'none';
-          pinIcon.style.animation = '';
-          setupAutocomplete('pickupInput', 'pickupSuggestions');
-
           if (err.code === 1) {
-            showToast('📍 Location permission denied. Manually enter karein.', 'error');
+            showToast('📍 Permission deny ki. Manually enter karo.', 'warning');
           } else {
-            showToast('Location detect nahi ho saka. Manually darj karein.', 'error');
+            showToast('Location detect nahi hua. Manually daalo.', 'error');
           }
+          enableManualInput('');
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
       );
     };
 
-    // Add spin keyframe
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      @keyframes pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.4; transform: scale(1.4); }
-      }
-    `;
-    document.head.appendChild(style);
+    function enableManualInput(msg) {
+      const input = document.getElementById('pickupInput');
+      input.placeholder = 'Pickup location type karo...';
+      input.removeAttribute('readonly');
+      input.style.opacity = '1';
+      input.focus();
+      document.getElementById('locationNotice').style.display = 'none';
+      document.getElementById('gpsBtnIcon').textContent = '🎯';
+      document.getElementById('gpsBtn').classList.remove('detecting', 'detected');
+      if (msg) showToast(msg, 'info');
+    }
 
-    window.onload = fetchUserLocation;
+    // Auto-detect on page load
+    window.addEventListener('load', fetchUserLocation);
+
+    // ─── History Modal ────────────────────────────────────────────
+    function openUserHistory() {
+      const modal = document.getElementById('userHistoryModal');
+      modal.style.display = 'flex';
+      requestAnimationFrame(() => modal.classList.add('open'));
+    }
+
+    function closeUserHistory() {
+      const modal = document.getElementById('userHistoryModal');
+      modal.classList.remove('open');
+      setTimeout(() => { modal.style.display = 'none'; }, 300);
+    }
+
+    document.getElementById('userHistoryModal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeUserHistory();
+    });
+  </script>
+
+  <!-- History fetch script (from existing user.js logic) -->
+  <script>
+    async function fetchUserHistory() {
+      const phone = document.getElementById('userHistoryPhone').value.trim();
+      if (!phone || phone.length < 10) {
+        showToast('Valid 10-digit number daalo', 'error');
+        return;
+      }
+      const listDiv = document.getElementById('userHistoryList');
+      listDiv.innerHTML = '<div style="text-align:center; padding:24px; color:var(--text-muted)">⏳ Loading rides...</div>';
+      listDiv.style.display = 'block';
+      document.getElementById('userHistoryPhoneSection').style.display = 'none';
+
+      try {
+        const res = await fetch(`/api/user-rides?phone=${encodeURIComponent(phone)}`);
+        const data = await res.json();
+        if (!data.rides || data.rides.length === 0) {
+          listDiv.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-muted)">
+            <div style="font-size:2rem;margin-bottom:8px">🚌</div>
+            <p>Koi ride history nahi mili</p>
+          </div>`;
+        } else {
+          listDiv.innerHTML = data.rides.map(ride => `
+            <div class="history-ride-card">
+              <div class="history-route">
+                <span class="history-from">📍 ${ride.pickup || 'N/A'}</span>
+                <span class="history-arrow">→</span>
+                <span class="history-to">🎯 ${ride.destination || 'N/A'}</span>
+              </div>
+              <div class="history-meta">
+                <span>🕐 ${new Date(ride.created_at).toLocaleDateString('hi-IN')}</span>
+                <span>💺 Seat ${ride.seat_number || 'N/A'}</span>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        listDiv.innerHTML = `<div style="text-align:center;padding:24px;color:var(--danger)">❌ Error loading rides</div>`;
+      }
+    }
+  </script>
+
+  <!-- Feedback FAB (bottom-left) -->
+  <button
+    onclick="openHomeFeedback()"
+    title="Send Feedback"
+    style="position:fixed;bottom:24px;left:24px;z-index:1500;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:white;font-size:1.3rem;cursor:pointer;box-shadow:0 8px 24px rgba(99,102,241,0.5);display:flex;align-items:center;justify-content:center;transition:all 0.25s;"
+    onmouseover="this.style.transform='scale(1.12) translateY(-2px)'"
+    onmouseout="this.style.transform='scale(1) translateY(0)'"
+  >💬</button>
+
+  <!-- Home Feedback Modal -->
+  <div id="homeFeedbackModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.65);backdrop-filter:blur(10px);align-items:flex-end;justify-content:center;">
+    <div style="width:100%;max-width:520px;background:#111827;border:1px solid rgba(255,255,255,0.1);border-radius:24px 24px 0 0;padding:24px 24px 36px;animation:sheetUpHome 0.4s cubic-bezier(0.34,1.2,0.64,1) both;">
+      <div style="width:40px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 20px;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <span style="font-family:Outfit,sans-serif;font-size:1.2rem;font-weight:700;color:#f1f5f9;">💬 Feedback Bhejo</span>
+        <button onclick="closeHomeFeedback()" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#64748b;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+      <div id="hfbTypeRow" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="hfb-chip active" onclick="selectHfbType(this,'suggestion')">💡 Suggestion</button>
+        <button class="hfb-chip" onclick="selectHfbType(this,'bug')">🐛 Bug</button>
+        <button class="hfb-chip" onclick="selectHfbType(this,'praise')">⭐ Praise</button>
+        <button class="hfb-chip" onclick="selectHfbType(this,'complaint')">⚠️ Complaint</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.3);border:1.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+        <span>👤</span>
+        <input type="text" id="hfbName" placeholder="Aapka naam (optional)" style="flex:1;background:none;border:none;outline:none;color:#f1f5f9;font-family:Inter,sans-serif;font-size:0.88rem;">
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.3);border:1.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+        <span>📱</span>
+        <input type="tel" id="hfbPhone" placeholder="Phone (optional)" maxlength="10" style="flex:1;background:none;border:none;outline:none;color:#f1f5f9;font-family:Inter,sans-serif;font-size:0.88rem;">
+      </div>
+      <textarea id="hfbMessage" placeholder="Aapka feedback likhein..." style="width:100%;background:rgba(0,0,0,0.3);border:1.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px;color:#f1f5f9;font-family:Inter,sans-serif;font-size:0.88rem;outline:none;resize:vertical;min-height:90px;"></textarea>
+      <button onclick="submitHomeFeedback()" style="width:100%;margin-top:12px;padding:13px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:11px;color:white;font-family:Inter,sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(99,102,241,0.3);">🚀 Submit Feedback</button>
+    </div>
+  </div>
+
+  <style>
+    @keyframes sheetUpHome { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
+    .hfb-chip { padding:5px 12px;border-radius:20px;font-size:0.78rem;font-weight:600;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#64748b;cursor:pointer;transition:all 0.2s;font-family:Inter,sans-serif; }
+    .hfb-chip.active { background:rgba(99,102,241,0.15);border-color:rgba(99,102,241,0.4);color:#a78bfa; }
+  </style>
+
+  <script>
+    let hfbType = 'suggestion';
+    function openHomeFeedback() {
+      const m = document.getElementById('homeFeedbackModal');
+      m.style.display = 'flex';
+    }
+    function closeHomeFeedback() {
+      const m = document.getElementById('homeFeedbackModal');
+      m.style.display = 'none';
+    }
+    function selectHfbType(chip, type) {
+      hfbType = type;
+      document.querySelectorAll('.hfb-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    }
+    async function submitHomeFeedback() {
+      const message = document.getElementById('hfbMessage').value.trim();
+      if (!message) { showToast('Message likhna zaroori hai!', 'warning'); return; }
+      const name = document.getElementById('hfbName').value.trim() || 'Anonymous';
+      const phone = document.getElementById('hfbPhone').value.trim() || '';
+      try {
+        const res = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, message, type: hfbType })
+        });
+        if (res.ok) {
+          showToast('Feedback bhej diya! Shukriya 🙏', 'success');
+          closeHomeFeedback();
+          document.getElementById('hfbMessage').value = '';
+          document.getElementById('hfbName').value = '';
+          document.getElementById('hfbPhone').value = '';
+        } else {
+          showToast('Feedback submit nahi hua', 'error');
+        }
+      } catch(e) {
+        showToast('Network error. Try again.', 'error');
+      }
+    }
+    document.getElementById('homeFeedbackModal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeHomeFeedback();
+    });
   </script>
 
   <script src="/js/pwa.js"></script>
   <script>
-    // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-          .then(registration => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          })
-          .catch(err => {
-            console.log('ServiceWorker registration failed: ', err);
-          });
+        navigator.serviceWorker.register('/service-worker.js').catch(() => {});
       });
     }
   </script>
