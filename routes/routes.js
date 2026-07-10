@@ -375,4 +375,50 @@ router.get('/driver/:id/profile', async (req, res) => {
     }
 });
 
+// ─── GET /api/routes/driver/earnings ─────────────────────────────────────────
+// Returns driver's earnings breakdown: today, last 7 days, all time
+router.get('/driver/earnings', authenticateToken, async (req, res) => {
+    const db = req.app.get('db');
+    try {
+        // Today's earnings
+        const [[today]] = await db.query(`
+            SELECT
+                COUNT(*) AS rides_today,
+                SUM(COALESCE(fare, 0) * COALESCE(seats_booked, 1)) AS earnings_today
+            FROM ride_history
+            WHERE driver_id = ? AND DATE(created_at) = CURDATE()
+        `, [req.user.id]);
+
+        // Last 7 days breakdown
+        const [weekly] = await db.query(`
+            SELECT
+                DATE(created_at) AS date,
+                COUNT(*) AS rides,
+                SUM(COALESCE(fare, 0) * COALESCE(seats_booked, 1)) AS earnings
+            FROM ride_history
+            WHERE driver_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+        `, [req.user.id]);
+
+        // All time
+        const [[alltime]] = await db.query(`
+            SELECT
+                COUNT(*) AS total_rides,
+                SUM(COALESCE(fare, 0) * COALESCE(seats_booked, 1)) AS total_earnings
+            FROM ride_history WHERE driver_id = ?
+        `, [req.user.id]);
+
+        res.json({
+            today: { rides: today.rides_today || 0, earnings: today.earnings_today || 0 },
+            weekly,
+            alltime: { rides: alltime.total_rides || 0, earnings: alltime.total_earnings || 0 }
+        });
+    } catch (error) {
+        console.error('Driver earnings error:', error);
+        res.status(500).json({ error: 'Failed to fetch earnings.' });
+    }
+});
+
 module.exports = router;
+

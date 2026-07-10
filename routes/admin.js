@@ -202,4 +202,73 @@ router.patch('/routes/:id/disable', authenticateToken, async (req, res) => {
     }
 });
 
+// ─── GET /api/admin/analytics ────────────────────────────────────────────────
+// Returns last 7 days rides & revenue for charts.
+router.get('/analytics', authenticateToken, async (req, res) => {
+    const db = req.app.get('db');
+    try {
+        // Last 7 days daily rides + revenue
+        const [daily] = await db.query(`
+            SELECT
+                DATE(created_at) AS date,
+                COUNT(*) AS rides,
+                SUM(COALESCE(fare, 0) * COALESCE(seats_booked, 1)) AS revenue
+            FROM ride_history
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+        `);
+
+        // Top 5 drivers by rides
+        const [top_drivers] = await db.query(`
+            SELECT d.name, d.vehicle_type, d.avg_rating,
+                   COUNT(rh.id) AS total_rides,
+                   SUM(COALESCE(rh.fare, 0) * COALESCE(rh.seats_booked, 1)) AS earnings
+            FROM drivers d
+            LEFT JOIN ride_history rh ON rh.driver_id = d.id
+            GROUP BY d.id
+            ORDER BY total_rides DESC
+            LIMIT 5
+        `);
+
+        // Total revenue all time
+        const [[{ total_revenue }]] = await db.query(
+            'SELECT SUM(COALESCE(fare, 0) * COALESCE(seats_booked, 1)) AS total_revenue FROM ride_history'
+        );
+
+        // Average rating
+        const [[{ avg_platform_rating }]] = await db.query(
+            'SELECT AVG(rating) AS avg_platform_rating FROM ride_history WHERE rating IS NOT NULL'
+        );
+
+        res.json({ daily, top_drivers, total_revenue: total_revenue || 0, avg_platform_rating: parseFloat(avg_platform_rating || 0).toFixed(1) });
+    } catch (error) {
+        console.error('Analytics error:', error);
+        res.status(500).json({ error: 'Analytics fetch failed.' });
+    }
+});
+
+// ─── GET /api/admin/earnings-summary ─────────────────────────────────────────
+router.get('/earnings-summary', authenticateToken, async (req, res) => {
+    const db = req.app.get('db');
+    try {
+        const [summary] = await db.query(`
+            SELECT
+                d.id, d.name, d.vehicle_type, d.avg_rating,
+                COUNT(rh.id) AS total_rides,
+                SUM(COALESCE(rh.fare, 0) * COALESCE(rh.seats_booked, 1)) AS total_earnings,
+                SUM(CASE WHEN DATE(rh.created_at) = CURDATE() THEN COALESCE(rh.fare, 0) * COALESCE(rh.seats_booked, 1) ELSE 0 END) AS today_earnings
+            FROM drivers d
+            LEFT JOIN ride_history rh ON rh.driver_id = d.id
+            GROUP BY d.id
+            ORDER BY total_earnings DESC
+        `);
+        res.json(summary);
+    } catch (error) {
+        console.error('Earnings summary error:', error);
+        res.status(500).json({ error: 'Failed.' });
+    }
+});
+
 module.exports = router;
+

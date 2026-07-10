@@ -368,6 +368,9 @@
           <span class="nav-badge" id="routeCountBadge">–</span>
         </button>
         <div class="sidebar-section-label" style="margin-top:8px;">Reports</div>
+        <button class="sidebar-nav-btn" id="nav-analytics" onclick="switchTab('analytics')">
+          <span class="nav-icon">📈</span> Analytics
+        </button>
         <button class="sidebar-nav-btn" id="nav-feedback" onclick="switchTab('feedback')">
           <span class="nav-icon">💬</span> Feedback
           <span class="nav-badge danger" id="feedbackCountBadge">–</span>
@@ -566,6 +569,60 @@
           </div>
         </div>
 
+        <!-- ══ ANALYTICS TAB ══════════════════════════════ -->
+        <div class="tab-pane" id="pane-analytics">
+          <!-- Summary Cards -->
+          <div class="stats-grid" style="margin-bottom:20px;">
+            <div class="stat-card green">
+              <div class="stat-card-top"><div class="stat-card-icon green">💰</div><div class="stat-card-trend up">↑ Revenue</div></div>
+              <div class="stat-card-value green" id="analyticsTotalRev">₹–</div>
+              <div class="stat-card-label">Total Revenue (All Time)</div>
+            </div>
+            <div class="stat-card purple">
+              <div class="stat-card-top"><div class="stat-card-icon purple">⭐</div><div class="stat-card-trend live">Live</div></div>
+              <div class="stat-card-value purple" id="analyticsPlatformRating">–</div>
+              <div class="stat-card-label">Avg Platform Rating</div>
+            </div>
+            <div class="stat-card blue">
+              <div class="stat-card-top"><div class="stat-card-icon blue">🚗</div><div class="stat-card-trend up">↑ Active</div></div>
+              <div class="stat-card-value blue" id="analyticsTopDriver">–</div>
+              <div class="stat-card-label">Top Driver (Rides)</div>
+            </div>
+            <div class="stat-card orange">
+              <div class="stat-card-top"><div class="stat-card-icon orange">📅</div><div class="stat-card-trend up">Week</div></div>
+              <div class="stat-card-value orange" id="analyticsWeekRides">–</div>
+              <div class="stat-card-label">Rides This Week</div>
+            </div>
+          </div>
+
+          <!-- Charts -->
+          <div class="charts-row" style="margin-bottom:20px;">
+            <div class="chart-card">
+              <div class="chart-title">📊 Daily Rides (Last 7 Days)</div>
+              <canvas id="dailyRidesChart" height="160"></canvas>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">💵 Revenue (Last 7 Days)</div>
+              <canvas id="dailyRevenueChart" height="160"></canvas>
+            </div>
+          </div>
+
+          <!-- Top Drivers Leaderboard -->
+          <div class="data-section">
+            <div class="data-section-header">
+              <div class="data-section-title">🏆 Top Drivers Leaderboard</div>
+            </div>
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead><tr><th>#</th><th>Driver</th><th>Type</th><th>Total Rides</th><th>Earnings</th><th>Rating</th></tr></thead>
+                <tbody id="topDriversBody">
+                  <tr class="loading-row"><td colspan="6"><div class="spinner-sm"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </div><!-- /admin-content -->
     </div><!-- /admin-main -->
   </div><!-- /admin-layout -->
@@ -573,6 +630,101 @@
   <!-- Toast Container -->
   <div id="toastBox"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/js/admin.js"></script>
+  <script>
+    // ── Analytics Tab ─────────────────────────────────────────────
+    let ridesChartInst = null, revenueChartInst = null;
+
+    async function loadAnalytics() {
+      const token = localStorage.getItem('adminToken');
+      try {
+        const res = await fetch('/api/admin/analytics', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        // Update summary cards
+        document.getElementById('analyticsTotalRev').textContent = '\u20b9' + parseFloat(data.total_revenue || 0).toLocaleString('en-IN');
+        document.getElementById('analyticsPlatformRating').textContent = data.avg_platform_rating || '0.0';
+        if (data.top_drivers && data.top_drivers.length > 0) {
+          document.getElementById('analyticsTopDriver').textContent = data.top_drivers[0].name.split(' ')[0];
+        }
+        const weekRides = (data.daily || []).reduce((s, d) => s + parseInt(d.rides || 0), 0);
+        document.getElementById('analyticsWeekRides').textContent = weekRides;
+
+        // Build labels & datasets for last 7 days
+        const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const labels = [], rideVals = [], revenueVals = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(); d.setDate(d.getDate() - i);
+          const dStr = d.toISOString().split('T')[0];
+          const found = (data.daily || []).find(r => r.date && r.date.startsWith(dStr));
+          labels.push(dayLabels[d.getDay()]);
+          rideVals.push(found ? parseInt(found.rides || 0) : 0);
+          revenueVals.push(found ? parseFloat(found.revenue || 0) : 0);
+        }
+
+        const chartDefaults = {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', font: { size: 11 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', font: { size: 11 } }, beginAtZero: true }
+          }
+        };
+
+        // Rides chart
+        const ctx1 = document.getElementById('dailyRidesChart').getContext('2d');
+        if (ridesChartInst) ridesChartInst.destroy();
+        ridesChartInst = new Chart(ctx1, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{ label: 'Rides', data: rideVals, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)', tension: 0.4, fill: true, pointBackgroundColor: '#6366f1', pointRadius: 4 }]
+          },
+          options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => v + ' rides' } } } }
+        });
+
+        // Revenue chart
+        const ctx2 = document.getElementById('dailyRevenueChart').getContext('2d');
+        if (revenueChartInst) revenueChartInst.destroy();
+        revenueChartInst = new Chart(ctx2, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{ label: 'Revenue', data: revenueVals, backgroundColor: 'rgba(16,185,129,0.6)', borderColor: '#10b981', borderWidth: 2, borderRadius: 8, borderSkipped: false }]
+          },
+          options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => '\u20b9'+v } } } }
+        });
+
+        // Top drivers table
+        const tbody = document.getElementById('topDriversBody');
+        if (!data.top_drivers || data.top_drivers.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-row"><div class="empty-row-icon">\ud83d\ude97</div><div>No driver data yet</div></td></tr>';
+        } else {
+          tbody.innerHTML = data.top_drivers.map((d, i) => `
+            <tr>
+              <td><span style="font-weight:700;color:${['#f59e0b','#94a3b8','#cd7f32'][i] || '#64748b'}">${['\ud83e\udd47','\ud83e\udd48','\ud83e\udd49'][i] || (i+1)+'.'}</span></td>
+              <td style="font-weight:600;color:#e2e8f0;">${d.name}</td>
+              <td><span class="status-badge active">${d.vehicle_type || 'N/A'}</span></td>
+              <td>${d.total_rides || 0}</td>
+              <td style="color:#10b981;font-weight:600;">\u20b9${parseFloat(d.earnings || 0).toLocaleString('en-IN')}</td>
+              <td>\u2b50 ${parseFloat(d.avg_rating || 0).toFixed(1)}</td>
+            </tr>
+          `).join('');
+        }
+      } catch(e) {
+        console.error('Analytics error:', e);
+      }
+    }
+
+    // Patch switchTab to load analytics when clicked
+    const _origSwitch = typeof switchTab === 'function' ? switchTab : null;
+    window.switchTab = function(tab) {
+      if (_origSwitch) _origSwitch(tab);
+      if (tab === 'analytics') loadAnalytics();
+    };
+  </script>
 </body>
 </html>

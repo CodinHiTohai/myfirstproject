@@ -715,5 +715,29 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/user.js"></script>
+  <script src="/js/lang.js"></script>
+  <script>
+    // ─── WhatsApp Share helper ────────────────────────────────────────────
+    function shareOnWhatsApp(routeData) {
+      const msg = `🚌 *Eye In – Route Mili!*\n\n` +
+        `📍 *Route:* ${routeData.start || ''} → ${routeData.end || ''}\n` +
+        `🚗 *Vehicle:* ${routeData.vehicle || ''} (${routeData.type || ''})\n` +
+        `💰 *Fare:* ₹${routeData.fare || 'N/A'}\n` +
+        `💺 *Seats Available:* ${routeData.seats || 'N/A'}\n` +
+        `⭐ *Driver Rating:* ${routeData.rating || 'N/A'}\n\n` +
+        `🔗 Dekhne ke liye: ${window.location.href}\n\n` +
+        `_Eye In – Apni ride pehle dekho, phir board karo!_ 👁️`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function copyRouteLink(routeId) {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => {
+        if (typeof showToast === 'function') showToast('✅ Link copy ho gaya!', 'success');
+      }).catch(() => {
+        if (typeof showToast === 'function') showToast('Link: ' + url, 'info');
+      });
+    }
+  </script>
 </body>
 </html>

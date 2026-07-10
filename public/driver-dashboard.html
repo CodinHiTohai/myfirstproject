@@ -734,6 +734,7 @@
       </div>
     </div>
     <div class="dash-nav-right">
+      <button class="nav-action-btn" onclick="openEarnings()" id="earningsNavBtn">💰 Earnings</button>
       <button class="nav-action-btn" onclick="openDriverHistory()">📜 History</button>
       <button class="nav-action-btn danger" onclick="logout()">🚪 Logout</button>
     </div>
@@ -972,6 +973,37 @@
     </div>
   </div>
 
+  <!-- ══ EARNINGS MODAL ═══════════════════════════════════════════ -->
+  <div class="history-overlay" id="earningsModal">
+    <div class="history-card" style="max-width:500px;">
+      <div class="history-topbar">
+        <div class="history-title">💰 Meri Kamaai</div>
+        <button class="close-btn" onclick="closeEarnings()">✕</button>
+      </div>
+      <!-- Earnings summary cards -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
+        <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-family:Outfit,sans-serif;font-size:1.4rem;font-weight:800;color:#34d399;" id="earningToday">₹0</div>
+          <div style="font-size:0.68rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Aaj</div>
+        </div>
+        <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-family:Outfit,sans-serif;font-size:1.4rem;font-weight:800;color:#a78bfa;" id="earningRidesToday">0</div>
+          <div style="font-size:0.68rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Rides Aaj</div>
+        </div>
+        <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-family:Outfit,sans-serif;font-size:1.4rem;font-weight:800;color:#fbbf24;" id="earningAllTime">₹0</div>
+          <div style="font-size:0.68rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Total</div>
+        </div>
+      </div>
+      <!-- Weekly Chart -->
+      <div style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;margin-bottom:12px;">
+        <div style="font-size:0.78rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">📊 Last 7 Days Earnings</div>
+        <canvas id="earningsChart" height="120"></canvas>
+      </div>
+      <div id="earningsLoading" style="text-align:center;padding:16px;color:#334155;">⏳ Loading...</div>
+    </div>
+  </div>
+
   <!-- ══ HISTORY MODAL ══════════════════════════════════════════ -->
   <div class="history-overlay" id="driverHistoryModal">
     <div class="history-card">
@@ -1126,12 +1158,80 @@
       driverMap.fitBounds(bounds, { padding: [60, 60] });
     }
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/js/driver.js"></script>
   <script src="/js/pwa.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
     }
+
+    // ══ EARNINGS MODAL ══════════════════════════════════════
+    let earningsChartInstance = null;
+
+    async function openEarnings() {
+      document.getElementById('earningsModal').classList.add('open');
+      document.getElementById('earningsLoading').style.display = 'block';
+      const token = localStorage.getItem('driverToken');
+      try {
+        const res = await fetch('/api/routes/driver/earnings', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        document.getElementById('earningToday').textContent = '₹' + (data.today.earnings || 0);
+        document.getElementById('earningRidesToday').textContent = data.today.rides || 0;
+        document.getElementById('earningAllTime').textContent = '₹' + (data.alltime.earnings || 0);
+        document.getElementById('earningsLoading').style.display = 'none';
+
+        // Build chart
+        const labels = [];
+        const values = [];
+        const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        // Fill 7 day slots
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(); d.setDate(d.getDate() - i);
+          const dStr = d.toISOString().split('T')[0];
+          const found = (data.weekly || []).find(w => w.date && w.date.startsWith(dStr));
+          labels.push(days[d.getDay()]);
+          values.push(found ? parseFloat(found.earnings || 0) : 0);
+        }
+
+        const ctx = document.getElementById('earningsChart').getContext('2d');
+        if (earningsChartInstance) earningsChartInstance.destroy();
+        earningsChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Earnings (₹)',
+              data: values,
+              backgroundColor: 'rgba(99,102,241,0.6)',
+              borderColor: '#6366f1',
+              borderWidth: 2,
+              borderRadius: 8,
+              borderSkipped: false
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 11 } } },
+              y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 11 }, callback: v => '₹'+v } }
+            }
+          }
+        });
+      } catch(e) {
+        document.getElementById('earningsLoading').textContent = '❌ Earnings load nahi hua';
+      }
+    }
+
+    function closeEarnings() {
+      document.getElementById('earningsModal').classList.remove('open');
+    }
+    document.getElementById('earningsModal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeEarnings();
+    });
 
     // Open/close history modal
     function openDriverHistory() {

@@ -2431,7 +2431,133 @@ body {
     font-size: 2rem;
   }
 
+
   .dashboard-content {
     padding: 20px 16px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE IMPROVEMENTS – Eye In v2.0
+   Touch-friendly, readable, premium feel on all devices
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Touch-friendly min sizes */
+@media (max-width: 768px) {
+  /* All buttons min touch target */
+  button, .btn, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Better typography on mobile */
+  body { font-size: 15px; }
+
+  /* Smoother scrolling */
+  * { -webkit-overflow-scrolling: touch; }
+
+  /* Prevent text overflow */
+  h1, h2, h3, p { overflow-wrap: break-word; word-break: break-word; }
+
+  /* Navbar improvements */
+  .navbar { padding: 0 14px; height: 56px; }
+  .navbar-brand .logo-text { font-size: 1.1rem; }
+  .nav-btn { padding: 7px 10px; font-size: 0.78rem; }
+  .nav-btn-label { display: none; }
+
+  /* Better form inputs on mobile */
+  input, textarea, select {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+    border-radius: 10px;
+  }
+
+  /* Card improvements */
+  .vehicle-card { margin-bottom: 8px; }
+
+  /* Reduce modal padding */
+  .modal-glass, .history-card, .rr-sheet {
+    padding: 16px;
+  }
+
+  /* Better feedback FAB position */
+  .feedback-fab { bottom: 80px; }
+
+  /* Full-width buttons in modals */
+  .booking-submit-btn, .otp-send-btn { font-size: 1rem; padding: 15px; }
+}
+
+/* Extra small – very small phones (< 375px) */
+@media (max-width: 375px) {
+  .nav-btn { padding: 6px 8px; font-size: 0.72rem; }
+  .vehicle-card { padding: 12px; }
+  .modal-body, .rr-body { padding: 12px 14px; }
+  h1 { font-size: 1.4rem !important; }
+}
+
+/* Landscape phone */
+@media (max-height: 500px) and (orientation: landscape) {
+  .modal-glass { max-height: 95vh; }
+  .history-card { max-height: 90vh; }
+}
+
+/* High DPI / Retina improvements */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .vehicle-card, .modal-glass, .history-card {
+    border-width: 0.5px;
+  }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode system preference (already dark, just ensure) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}
+
+/* Safe area for iPhone notch / bottom bar */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-tab-bar { padding-bottom: env(safe-area-inset-bottom); }
+  .feedback-fab { bottom: calc(24px + env(safe-area-inset-bottom)); }
+}
+
+/* Smooth scrollbar on desktop */
+@media (min-width: 769px) {
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.5); }
+}
+
+/* ─── WhatsApp share button styles ──────────────────────────── */
+.wa-share-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 8px;
+  background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.3);
+  color: #22c55e; font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s; text-decoration: none;
+}
+.wa-share-btn:hover { background: rgba(37,211,102,0.2); transform: translateY(-1px); }
+
+/* ─── Language toggle button ──────────────────────────────── */
+#langToggleBtn {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+/* ─── Utility classes ─────────────────────────────────────── */
+.text-success { color: #10b981 !important; }
+.text-danger  { color: #ef4444 !important; }
+.text-muted   { color: #64748b !important; }
+.text-purple  { color: #a78bfa !important; }
+.fw-700 { font-weight: 700 !important; }
+.mt-8 { margin-top: 8px !important; }
+.mb-8 { margin-bottom: 8px !important; }

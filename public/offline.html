@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eye In – Offline</title>
+  <link rel="icon" type="image/png" href="/img/icon-192x192.png">
+  <meta name="theme-color" content="#0a0e17">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e17;
+      --surface: #111827;
+      --border: rgba(255,255,255,0.08);
+      --text: #f1f5f9;
+      --muted: #64748b;
+      --accent: #6366f1;
+      --accent2: #8b5cf6;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .bg-glow {
+      position: fixed;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 48px 40px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      position: relative;
+      animation: fadeIn 0.6s ease;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    .offline-icon {
+      font-size: 4.5rem;
+      margin-bottom: 20px;
+      animation: float 3s ease-in-out infinite;
+      display: block;
+    }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+    }
+    p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+    .wifi-icon { font-size: 1.3rem; }
+    .tips {
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 28px;
+      text-align: left;
+    }
+    .tips h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #a78bfa;
+      margin-bottom: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .tip-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+    .tip-item:last-child { border-bottom: none; }
+    .tip-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .retry-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 8px 24px rgba(99,102,241,0.3);
+      margin-bottom: 12px;
+    }
+    .retry-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(99,102,241,0.4); }
+    .retry-btn:active { transform: translateY(0); }
+    .home-link {
+      display: block;
+      color: var(--muted);
+      font-size: 0.875rem;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .home-link:hover { color: #a78bfa; }
+    .status-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      margin-right: 6px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    @media (max-width: 480px) {
+      .card { padding: 36px 24px; }
+      h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+  <div class="card">
+    <span class="offline-icon">📡</span>
+    <h1>Abhi Offline Ho</h1>
+    <div class="status-bar">
+      <span class="status-dot"></span>
+      Internet connection nahi mili
+    </div>
+    <p>
+      Aapka internet band lag raha hai. <br>
+      Connection check karo aur phir try karo.
+    </p>
+
+    <div class="tips">
+      <h3>✨ Tips</h3>
+      <div class="tip-item">
+        <span class="tip-icon">📶</span>
+        <span>WiFi ya mobile data on karo</span>
+      </div>
+      <div class="tip-item">
+        <span class="tip-icon">✈️</span>
+        <span>Airplane mode off karo</span>
+      </div>
+      <div class="tip-item">
+        <span class="tip-icon">🔄</span>
+        <span>Router restart karo</span>
+      </div>
+      <div class="tip-item">
+        <span class="tip-icon">📱</span>
+        <span>Mobile data on karke try karo</span>
+      </div>
+    </div>
+
+    <button class="retry-btn" onclick="retryConnection()">
+      🔄 Dobara Try Karo
+    </button>
+    <a href="/" class="home-link">← Ghar wapas jao</a>
+  </div>
+
+  <script>
+    function retryConnection() {
+      const btn = document.querySelector('.retry-btn');
+      btn.textContent = '⏳ Check kar rahe hain...';
+      btn.disabled = true;
+      fetch('/', { method: 'HEAD', cache: 'no-cache' })
+        .then(() => { window.location.href = '/'; })
+        .catch(() => {
+          btn.textContent = '❌ Abhi bhi offline hai. Phir try karo.';
+          setTimeout(() => {
+            btn.textContent = '🔄 Dobara Try Karo';
+            btn.disabled = false;
+          }, 2000);
+        });
+    }
+
+    // Auto-retry every 10 seconds
+    setInterval(() => {
+      fetch('/', { method: 'HEAD', cache: 'no-cache' })
+        .then(() => { window.location.href = '/'; })
+        .catch(() => {});
+    }, 10000);
+
+    // Listen for online event
+    window.addEventListener('online', () => {
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>
