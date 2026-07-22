@@ -202,18 +202,21 @@ function bindDragEvents() {
 }
 
 async function reverseGeocode(lat, lng, inputId) {
-    const loader = document.getElementById('setupMapLoading');
-    loader.style.display = 'block';
+    // Show loading tip (correct element ID from HTML)
+    const loader = document.getElementById('mapLoadingTip');
+    if (loader) loader.style.display = 'block';
     try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
         const data = await res.json();
-        const placeName = data.name || data.address.road || data.address.suburb || data.address.city || data.address.state || "Unknown Location";
-        document.getElementById(inputId).value = placeName;
+        const addr = data.address || {};
+        const placeName = data.name || addr.neighbourhood || addr.suburb || addr.road || addr.village || addr.town || addr.city || addr.state || 'Current Location';
+        const el = document.getElementById(inputId);
+        if (el) el.value = placeName;
     } catch (err) {
-        console.error("Geocoding failed:", err);
-        showToast("Failed to fetch address name for this spot.", "error");
+        console.error('Geocoding failed:', err);
+        // Don't show error toast — silently skip
     } finally {
-        loader.style.display = 'none';
+        if (loader) loader.style.display = 'none';
     }
 }
 
@@ -227,16 +230,26 @@ async function goLive(e) {
     const fare = document.getElementById('fareInput').value;
     const total_seats = document.getElementById('seatsInput').value;
 
-    const startLat = selectedStartCoords ? selectedStartCoords.lat : null;
-    const startLng = selectedStartCoords ? selectedStartCoords.lng : null;
-
-    if (!selectedStartCoords) {
-        showToast('Map is still loading location, please wait a second.', 'warning');
+    if (!start_location || !end_location) {
+        showToast('⚠️ Start aur End location zaroori hai!', 'warning');
+        return;
+    }
+    if (!fare || parseFloat(fare) <= 0) {
+        showToast('⚠️ Fare sahi daalo!', 'warning');
+        return;
+    }
+    if (!total_seats || parseInt(total_seats) <= 0) {
+        showToast('⚠️ Total seats sahi daalo!', 'warning');
         return;
     }
 
+    // Use available coords or safe defaults (don't block on GPS)
+    const startLat = selectedStartCoords ? selectedStartCoords.lat : 25.0961;
+    const startLng = selectedStartCoords ? selectedStartCoords.lng : 85.3131;
+
     const btn = document.getElementById('goLiveBtn');
-    btn.textContent = 'Going Live...';
+    const origHTML = btn.innerHTML;
+    btn.innerHTML = '⏳ Going Live...';
     btn.disabled = true;
 
     try {
@@ -249,7 +262,7 @@ async function goLive(e) {
             body: JSON.stringify({
                 start_location,
                 end_location,
-                stops,
+                stops: stops || null,
                 fare,
                 total_seats,
                 lat: startLat,
@@ -259,26 +272,29 @@ async function goLive(e) {
 
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.error || 'Failed to go live');
+        if (!res.ok) throw new Error(data.error || 'Go Live fail hua. Server error.');
 
         currentRoute = data;
 
         // ✅ AUTO-SAVE preferences whenever driver goes live
         const prefs = { startLocation: start_location, endLocation: end_location, stops, fare, totalSeats: total_seats, savedAt: new Date().toLocaleString('hi-IN') };
         localStorage.setItem('driverRoutePrefs', JSON.stringify(prefs));
-        const saveIndicator = document.getElementById('savedPrefsBadge');
-        if (saveIndicator) {
-            saveIndicator.style.display = 'flex';
-            const span = saveIndicator.querySelector('span');
-            if (span) span.textContent = `Auto-saved: ${start_location} → ${end_location}`;
+
+        // Update saved badge
+        const savedBadge = document.getElementById('savedBadge');
+        if (savedBadge) {
+            savedBadge.style.display = 'flex';
+            const span = savedBadge.querySelector('span');
+            if (span) span.textContent = `Auto-saved`;
         }
 
         activateLiveMode();
-        showToast('🟢 You are now LIVE! Route saved automatically.', 'success');
+        showToast('🟢 Ab aap LIVE hain! Route save ho gaya.', 'success');
 
     } catch (err) {
-        showToast(err.message, 'error');
-        btn.textContent = '🟢 Go Live';
+        console.error('Go live error:', err);
+        showToast('❌ ' + err.message, 'error');
+        btn.innerHTML = origHTML;
         btn.disabled = false;
     }
 }
@@ -848,7 +864,7 @@ async function updateSeat(action, count = 1) { // Added count parameter
 // ─── End Ride ────────────────────────────────────────────────
 async function endRide() {
     if (!currentRoute) return;
-    if (!confirm('Are you sure you want to end this ride?')) return;
+    if (!confirm('Kya aap ride end karna chahte hain?')) return;
 
     try {
         const res = await fetch(`/api/routes/${currentRoute.id}/end`, {
@@ -859,33 +875,49 @@ async function endRide() {
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to end ride');
+        if (!res.ok) throw new Error(data.error || 'Ride end nahi hua');
 
         currentRoute = null;
         stopTracking();
 
-        // Reset UI
-        const badge = document.getElementById('statusBadge');
-        badge.textContent = 'Offline';
-        badge.className = 'badge badge-danger';
+        // ── Reset navbar status pill ──
+        const pill = document.getElementById('statusPill');
+        const pillText = document.getElementById('statusText');
+        if (pill) pill.className = 'status-pill offline';
+        if (pillText) pillText.textContent = 'Offline';
 
-        document.getElementById('statEmptySeats').textContent = '–';
-        document.getElementById('statFilledSeats').textContent = '–';
-        document.getElementById('statRoute').textContent = '–';
-        document.getElementById('statFare').textContent = '–';
-        document.getElementById('filledCount').textContent = '0';
-        document.getElementById('totalCount').textContent = '0';
-        document.getElementById('driverSeatGrid').innerHTML = '';
+        // ── Reset stats ──
+        const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        setEl('statEmpty', '–');
+        setEl('statFilled', '–');
+        setEl('statFare', '–');
+        setEl('statRequests', '0');
+        setEl('filledCount', '0');
+        setEl('totalCount', '0');
 
+        // ── Clear seat grid ──
+        const seatGrid = document.getElementById('driverSeatGrid');
+        if (seatGrid) seatGrid.innerHTML = '';
+
+        // ── Disable seat control buttons ──
         document.getElementById('fillBtn').disabled = true;
         document.getElementById('emptyBtn').disabled = true;
         document.getElementById('endRideBtn').disabled = true;
         document.getElementById('simulateBtn').disabled = true;
 
-        document.getElementById('goLiveBtn').textContent = '🟢 Go Live';
-        document.getElementById('goLiveBtn').disabled = false;
+        // ── Reset Go Live button ──
+        const goLiveBtn = document.getElementById('goLiveBtn');
+        if (goLiveBtn) {
+            goLiveBtn.innerHTML = '🟢 Go Live';
+            goLiveBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+            goLiveBtn.disabled = false;
+        }
 
-        document.getElementById('mapSection').style.display = 'none';
+        // ── Hide map overlay elements ──
+        const mapTopBar = document.getElementById('mapTopBar');
+        if (mapTopBar) mapTopBar.style.display = 'none';
+
+        // ── Destroy driver map ──
         if (driverMap) {
             driverMap.remove();
             driverMap = null;
@@ -893,10 +925,11 @@ async function endRide() {
             userMarkers = {};
         }
 
-        // Clear form
-        document.getElementById('routeForm').reset();
+        // ── Hide passenger queue ──
+        const queueSection = document.getElementById('passengerQueueSection');
+        if (queueSection) queueSection.style.display = 'none';
 
-        showToast('🛑 Ride ended successfully', 'success');
+        showToast('🛑 Ride successfully end ho gayi!', 'success');
 
     } catch (err) {
         showToast(err.message, 'error');
