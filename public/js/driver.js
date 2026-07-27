@@ -68,7 +68,7 @@ function loadSavedRoutePreferences() {
         if (prefs.totalSeats) document.getElementById('seatsInput').value = prefs.totalSeats;
 
         // Show a saved badge
-        const saveIndicator = document.getElementById('savedPrefsBadge');
+        const saveIndicator = document.getElementById('savedBadge');
         if (saveIndicator) {
             saveIndicator.style.display = 'flex';
         }
@@ -99,7 +99,7 @@ function saveRoutePreferences() {
     showToast(`✅ Route save ho gayi! ${prefs.startLocation} → ${prefs.endLocation}`, 'success');
 
     // Update badge
-    const saveIndicator = document.getElementById('savedPrefsBadge');
+    const saveIndicator = document.getElementById('savedBadge');
     if (saveIndicator) {
         saveIndicator.style.display = 'flex';
         saveIndicator.querySelector('span').textContent = `Saved: ${prefs.startLocation} → ${prefs.endLocation}`;
@@ -111,7 +111,7 @@ function clearSavedPreferences() {
     if (!confirm('Kya aap saved route delete karna chahte hain?')) return;
     localStorage.removeItem('driverRoutePrefs');
     document.getElementById('routeForm').reset();
-    const saveIndicator = document.getElementById('savedPrefsBadge');
+    const saveIndicator = document.getElementById('savedBadge');
     if (saveIndicator) saveIndicator.style.display = 'none';
     showToast('🗑️ Saved route clear ho gayi', 'info');
 }
@@ -311,10 +311,10 @@ function activateLiveMode() {
     updateStats();
 
     // Enable seat controls
-    document.getElementById('fillBtn').disabled = false;
-    document.getElementById('emptyBtn').disabled = false;
-    document.getElementById('endRideBtn').disabled = false;
-    document.getElementById('simulateBtn').disabled = false;
+    const fillBtn = document.getElementById('fillBtn'); if (fillBtn) fillBtn.disabled = false;
+    const emptyBtn = document.getElementById('emptyBtn'); if (emptyBtn) emptyBtn.disabled = false;
+    const endRideBtn = document.getElementById('endRideBtn'); if (endRideBtn) endRideBtn.disabled = false;
+    const simulateBtn = document.getElementById('simulateBtn'); if (simulateBtn) simulateBtn.disabled = false;
 
     // Update go live btn
     const goLiveBtn = document.getElementById('goLiveBtn');
@@ -336,7 +336,7 @@ function activateLiveMode() {
     socket.emit('join-driver-room', currentRoute.id);
 
     // Initialize Map
-    document.getElementById('mapSection').style.display = 'block';
+    const mapSection = document.getElementById('mapTopBar'); if (mapSection) mapSection.style.display = 'flex';
     if (!driverMap) initDriverMap();
 
     // Start tracking GPS
@@ -900,10 +900,10 @@ async function endRide() {
         if (seatGrid) seatGrid.innerHTML = '';
 
         // ── Disable seat control buttons ──
-        document.getElementById('fillBtn').disabled = true;
-        document.getElementById('emptyBtn').disabled = true;
-        document.getElementById('endRideBtn').disabled = true;
-        document.getElementById('simulateBtn').disabled = true;
+        const fb = document.getElementById('fillBtn'); if (fb) fb.disabled = true;
+        const eb = document.getElementById('emptyBtn'); if (eb) eb.disabled = true;
+        const erb = document.getElementById('endRideBtn'); if (erb) erb.disabled = true;
+        const sb = document.getElementById('simulateBtn'); if (sb) sb.disabled = true;
 
         // ── Reset Go Live button ──
         const goLiveBtn = document.getElementById('goLiveBtn');

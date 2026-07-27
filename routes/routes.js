@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 
+// ─── IMPORTANT: All specific routes MUST come before /:id wildcard ────────────
+
 // Get driver's active route (for auto-restore on dashboard load)
 router.get('/driver/active', authenticateToken, async (req, res) => {
     const db = req.app.get('db');
@@ -26,6 +28,119 @@ router.get('/driver/active', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Get active route error:', error);
         res.status(500).json({ error: 'Database error.' });
+    }
+});
+
+// ─── Get ride history for a driver ───────────────────────────
+router.get('/driver/ride-history', authenticateToken, async (req, res) => {
+    const db = req.app.get('db');
+    
+    try {
+        const [rides] = await db.query(`
+            SELECT * FROM ride_history
+            WHERE driver_id = ?
+            ORDER BY created_at DESC
+            LIMIT 50
+        `, [req.user.id]);
+
+        res.json(rides);
+    } catch (error) {
+        console.error('Driver ride history error:', error);
+        res.status(500).json({ error: 'Failed to fetch driver ride history' });
+    }
+});
+
+// ─── GET /api/routes/driver/earnings ─────────────────────────────────────────
+// Returns driver's earnings breakdown: today, last 7 days, all time
+router.get('/driver/earnings', authenticateToken, async (req, res) => {
+    const db = req.app.get('db');
+    try {
+        // Today's earnings
+        const [[today]] = await db.query(`
+            SELECT
+                COUNT(*) AS rides_today,
+                SUM(COALESCE(fare, 0) * COALESCE(seats_booked, 1)) AS earnings_today
+            FROM ride_history
+            WHERE driver_id = ? AND DATE(created_at) = CURDATE()
+        `, [req.user.id]);
+
+        // Last 7 days breakdown
+        const [weekly] = await db.query(`
+            SELECT
+                DATE(created_at) AS date,
+                COUNT(*) AS rides,
+                SUM(COALESCE(fare, 0) * COALESCE(seats_booked, 1)) AS earnings
+            FROM ride_history
+            WHERE driver_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+        `, [req.user.id]);
+
+        // All time
+        const [[alltime]] = await db.query(`
+            SELECT
+                COUNT(*) AS total_rides,
+                SUM(COALESCE(fare, 0) * COALESCE(seats_booked, 1)) AS total_earnings
+            FROM ride_history WHERE driver_id = ?
+        `, [req.user.id]);
+
+        res.json({
+            today: { rides: today.rides_today || 0, earnings: today.earnings_today || 0 },
+            weekly,
+            alltime: { rides: alltime.total_rides || 0, earnings: alltime.total_earnings || 0 }
+        });
+    } catch (error) {
+        console.error('Driver earnings error:', error);
+        res.status(500).json({ error: 'Failed to fetch earnings.' });
+    }
+});
+
+// ─── GET /driver/:id/profile ──────────────────────────────────────────────────
+// Returns a driver's profile: info, ratings summary, and their last 5 reviews.
+router.get('/driver/:id/profile', async (req, res) => {
+    const db = req.app.get('db');
+    const driverId = parseInt(req.params.id);
+
+    try {
+        // Get driver info
+        const [drivers] = await db.query(
+            `SELECT id, name, phone, vehicle_number, vehicle_type,
+                    avg_rating, total_ratings, created_at,
+                    COALESCE(status, 'active') AS status
+             FROM drivers WHERE id = ?`,
+            [driverId]
+        );
+
+        if (drivers.length === 0) {
+            return res.status(404).json({ error: 'Driver not found.' });
+        }
+
+        const driver = drivers[0];
+
+        // Total rides completed by this driver
+        const [[{ total_rides }]] = await db.query(
+            'SELECT COUNT(*) AS total_rides FROM ride_history WHERE driver_id = ?',
+            [driverId]
+        );
+
+        // Last 5 reviews with a rating comment
+        const [recent_reviews] = await db.query(
+            `SELECT id, passenger_name, rating, rating_comment, created_at
+             FROM ride_history
+             WHERE driver_id = ? AND rating IS NOT NULL
+             ORDER BY created_at DESC
+             LIMIT 5`,
+            [driverId]
+        );
+
+        res.json({
+            ...driver,
+            total_rides,
+            recent_reviews
+        });
+    } catch (error) {
+        console.error('Driver profile error:', error);
+        res.status(500).json({ error: 'Database error retrieving driver profile.' });
     }
 });
 
@@ -58,7 +173,96 @@ router.get('/search', async (req, res) => {
     }
 });
 
-// Get single route details
+// ─── Save ride to history (when driver accepts) ──────────────
+router.post('/ride-history', async (req, res) => {
+    const db = req.app.get('db');
+    const { routeId, driverId, passengerName, passengerPhone, passengers, seats } = req.body;
+
+    try {
+        // Get route & driver info
+        const [[route]] = await db.query(`
+            SELECT r.*, d.name as driver_name, d.vehicle_number, d.vehicle_type
+            FROM routes r JOIN drivers d ON r.driver_id = d.id
+            WHERE r.id = ?
+        `, [routeId]);
+
+        if (!route) return res.status(404).json({ error: 'Route not found' });
+
+        const [result] = await db.query(`
+            INSERT INTO ride_history (route_id, driver_id, passenger_name, passenger_phone, passengers, seats_booked, start_location, end_location, fare, vehicle_number, vehicle_type, driver_name, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'accepted')
+        `, [routeId, route.driver_id, passengerName, passengerPhone, passengers || 1, seats || 1, route.start_location, route.end_location, route.fare, route.vehicle_number, route.vehicle_type, route.driver_name]);
+
+        res.status(201).json({ rideId: result.insertId, message: 'Ride saved to history' });
+    } catch (error) {
+        console.error('Save ride history error:', error);
+        res.status(500).json({ error: 'Failed to save ride history' });
+    }
+});
+
+// ─── Get ride history for a passenger (by phone) ─────────────
+router.get('/ride-history/:phone', async (req, res) => {
+    const db = req.app.get('db');
+    const phone = req.params.phone;
+
+    try {
+        const [rides] = await db.query(`
+            SELECT * FROM ride_history
+            WHERE passenger_phone = ?
+            ORDER BY created_at DESC
+            LIMIT 20
+        `, [phone]);
+
+        res.json(rides);
+    } catch (error) {
+        console.error('Get ride history error:', error);
+        res.status(500).json({ error: 'Failed to fetch ride history' });
+    }
+});
+
+// ─── Submit rating for a ride ────────────────────────────────
+router.post('/ride-history/:id/rate', async (req, res) => {
+    const db = req.app.get('db');
+    const rideId = req.params.id;
+    const { rating, comment } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    }
+
+    try {
+        // Update ride_history with rating
+        const [result] = await db.query(`
+            UPDATE ride_history SET rating = ?, rating_comment = ?, status = 'completed', completed_at = NOW()
+            WHERE id = ? AND rating IS NULL
+        `, [rating, comment || null, rideId]);
+
+        if (result.affectedRows === 0) {
+            return res.status(400).json({ error: 'Ride already rated or not found' });
+        }
+
+        // Get the driver_id for this ride
+        const [[ride]] = await db.query('SELECT driver_id FROM ride_history WHERE id = ?', [rideId]);
+
+        // Recalculate driver's average rating
+        const [[stats]] = await db.query(`
+            SELECT AVG(rating) as avg_rating, COUNT(rating) as total_ratings
+            FROM ride_history
+            WHERE driver_id = ? AND rating IS NOT NULL
+        `, [ride.driver_id]);
+
+        await db.query(`
+            UPDATE drivers SET avg_rating = ?, total_ratings = ? WHERE id = ?
+        `, [parseFloat(stats.avg_rating).toFixed(1), stats.total_ratings, ride.driver_id]);
+
+        res.json({ message: 'Rating submitted!', avg_rating: parseFloat(stats.avg_rating).toFixed(1), total_ratings: stats.total_ratings });
+    } catch (error) {
+        console.error('Rating error:', error);
+        res.status(500).json({ error: 'Failed to submit rating' });
+    }
+});
+
+// ─── Get single route details — MUST be after all /driver/* and /search routes ─
 router.get('/:id', async (req, res) => {
     const db = req.app.get('db');
 
@@ -218,207 +422,4 @@ router.patch('/:id/end', authenticateToken, async (req, res) => {
     }
 });
 
-// ─── Save ride to history (when driver accepts) ──────────────
-router.post('/ride-history', async (req, res) => {
-    const db = req.app.get('db');
-    const { routeId, driverId, passengerName, passengerPhone, passengers, seats } = req.body;
-
-    try {
-        // Get route & driver info
-        const [[route]] = await db.query(`
-            SELECT r.*, d.name as driver_name, d.vehicle_number, d.vehicle_type
-            FROM routes r JOIN drivers d ON r.driver_id = d.id
-            WHERE r.id = ?
-        `, [routeId]);
-
-        if (!route) return res.status(404).json({ error: 'Route not found' });
-
-        const [result] = await db.query(`
-            INSERT INTO ride_history (route_id, driver_id, passenger_name, passenger_phone, passengers, seats_booked, start_location, end_location, fare, vehicle_number, vehicle_type, driver_name, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'accepted')
-        `, [routeId, route.driver_id, passengerName, passengerPhone, passengers || 1, seats || 1, route.start_location, route.end_location, route.fare, route.vehicle_number, route.vehicle_type, route.driver_name]);
-
-        res.status(201).json({ rideId: result.insertId, message: 'Ride saved to history' });
-    } catch (error) {
-        console.error('Save ride history error:', error);
-        res.status(500).json({ error: 'Failed to save ride history' });
-    }
-});
-
-// ─── Get ride history for a passenger (by phone) ─────────────
-router.get('/ride-history/:phone', async (req, res) => {
-    const db = req.app.get('db');
-    const phone = req.params.phone;
-
-    try {
-        const [rides] = await db.query(`
-            SELECT * FROM ride_history
-            WHERE passenger_phone = ?
-            ORDER BY created_at DESC
-            LIMIT 20
-        `, [phone]);
-
-        res.json(rides);
-    } catch (error) {
-        console.error('Get ride history error:', error);
-        res.status(500).json({ error: 'Failed to fetch ride history' });
-    }
-});
-
-// ─── Get ride history for a driver ───────────────────────────
-router.get('/driver/ride-history', authenticateToken, async (req, res) => {
-    const db = req.app.get('db');
-    
-    try {
-        const [rides] = await db.query(`
-            SELECT * FROM ride_history
-            WHERE driver_id = ?
-            ORDER BY created_at DESC
-            LIMIT 50
-        `, [req.user.id]);
-
-        res.json(rides);
-    } catch (error) {
-        console.error('Driver ride history error:', error);
-        res.status(500).json({ error: 'Failed to fetch driver ride history' });
-    }
-});
-
-// ─── Submit rating for a ride ────────────────────────────────
-router.post('/ride-history/:id/rate', async (req, res) => {
-    const db = req.app.get('db');
-    const rideId = req.params.id;
-    const { rating, comment } = req.body;
-
-    if (!rating || rating < 1 || rating > 5) {
-        return res.status(400).json({ error: 'Rating must be between 1 and 5' });
-    }
-
-    try {
-        // Update ride_history with rating
-        const [result] = await db.query(`
-            UPDATE ride_history SET rating = ?, rating_comment = ?, status = 'completed', completed_at = NOW()
-            WHERE id = ? AND rating IS NULL
-        `, [rating, comment || null, rideId]);
-
-        if (result.affectedRows === 0) {
-            return res.status(400).json({ error: 'Ride already rated or not found' });
-        }
-
-        // Get the driver_id for this ride
-        const [[ride]] = await db.query('SELECT driver_id FROM ride_history WHERE id = ?', [rideId]);
-
-        // Recalculate driver's average rating
-        const [[stats]] = await db.query(`
-            SELECT AVG(rating) as avg_rating, COUNT(rating) as total_ratings
-            FROM ride_history
-            WHERE driver_id = ? AND rating IS NOT NULL
-        `, [ride.driver_id]);
-
-        await db.query(`
-            UPDATE drivers SET avg_rating = ?, total_ratings = ? WHERE id = ?
-        `, [parseFloat(stats.avg_rating).toFixed(1), stats.total_ratings, ride.driver_id]);
-
-        res.json({ message: 'Rating submitted!', avg_rating: parseFloat(stats.avg_rating).toFixed(1), total_ratings: stats.total_ratings });
-    } catch (error) {
-        console.error('Rating error:', error);
-        res.status(500).json({ error: 'Failed to submit rating' });
-    }
-});
-
-// ─── GET /driver/:id/profile ──────────────────────────────────────────────────
-// Returns a driver's profile: info, ratings summary, and their last 5 reviews.
-router.get('/driver/:id/profile', async (req, res) => {
-    const db = req.app.get('db');
-    const driverId = parseInt(req.params.id);
-
-    try {
-        // Get driver info
-        const [drivers] = await db.query(
-            `SELECT id, name, phone, vehicle_number, vehicle_type,
-                    avg_rating, total_ratings, created_at,
-                    COALESCE(status, 'active') AS status
-             FROM drivers WHERE id = ?`,
-            [driverId]
-        );
-
-        if (drivers.length === 0) {
-            return res.status(404).json({ error: 'Driver not found.' });
-        }
-
-        const driver = drivers[0];
-
-        // Total rides completed by this driver
-        const [[{ total_rides }]] = await db.query(
-            'SELECT COUNT(*) AS total_rides FROM ride_history WHERE driver_id = ?',
-            [driverId]
-        );
-
-        // Last 5 reviews with a rating comment
-        const [recent_reviews] = await db.query(
-            `SELECT id, passenger_name, rating, rating_comment, created_at
-             FROM ride_history
-             WHERE driver_id = ? AND rating IS NOT NULL
-             ORDER BY created_at DESC
-             LIMIT 5`,
-            [driverId]
-        );
-
-        res.json({
-            ...driver,
-            total_rides,
-            recent_reviews
-        });
-    } catch (error) {
-        console.error('Driver profile error:', error);
-        res.status(500).json({ error: 'Database error retrieving driver profile.' });
-    }
-});
-
-// ─── GET /api/routes/driver/earnings ─────────────────────────────────────────
-// Returns driver's earnings breakdown: today, last 7 days, all time
-router.get('/driver/earnings', authenticateToken, async (req, res) => {
-    const db = req.app.get('db');
-    try {
-        // Today's earnings
-        const [[today]] = await db.query(`
-            SELECT
-                COUNT(*) AS rides_today,
-                SUM(COALESCE(fare, 0) * COALESCE(seats_booked, 1)) AS earnings_today
-            FROM ride_history
-            WHERE driver_id = ? AND DATE(created_at) = CURDATE()
-        `, [req.user.id]);
-
-        // Last 7 days breakdown
-        const [weekly] = await db.query(`
-            SELECT
-                DATE(created_at) AS date,
-                COUNT(*) AS rides,
-                SUM(COALESCE(fare, 0) * COALESCE(seats_booked, 1)) AS earnings
-            FROM ride_history
-            WHERE driver_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-            GROUP BY DATE(created_at)
-            ORDER BY date ASC
-        `, [req.user.id]);
-
-        // All time
-        const [[alltime]] = await db.query(`
-            SELECT
-                COUNT(*) AS total_rides,
-                SUM(COALESCE(fare, 0) * COALESCE(seats_booked, 1)) AS total_earnings
-            FROM ride_history WHERE driver_id = ?
-        `, [req.user.id]);
-
-        res.json({
-            today: { rides: today.rides_today || 0, earnings: today.earnings_today || 0 },
-            weekly,
-            alltime: { rides: alltime.total_rides || 0, earnings: alltime.total_earnings || 0 }
-        });
-    } catch (error) {
-        console.error('Driver earnings error:', error);
-        res.status(500).json({ error: 'Failed to fetch earnings.' });
-    }
-});
-
 module.exports = router;
-
