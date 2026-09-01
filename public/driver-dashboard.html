@@ -710,6 +710,97 @@
       #driverSeatGrid .auto-seats-overlay { display: flex; flex-direction: column; gap: 6px; align-items: center; }
       #driverSeatGrid .car-body-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
     }
+
+    /* ── Driver Live Road Hazard HUD & 1-Tap Quick Bar ── */
+    .driver-hazard-alert {
+      position: absolute;
+      top: 60px;
+      left: 16px;
+      right: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+      z-index: 1000;
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96));
+      border: 2px solid #ff3366;
+      border-radius: 16px;
+      padding: 12px 18px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 10px 30px rgba(239, 68, 68, 0.7);
+      animation: hazardCardPulse 0.9s infinite alternate;
+    }
+    @keyframes hazardCardPulse {
+      0% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(239,68,68,0.5)); }
+      100% { transform: scale(1.03); filter: drop-shadow(0 0 25px rgba(239,68,68,0.9)); }
+    }
+    .dha-text h4 { font-size: 1rem; font-weight: 800; color: #fff; margin-bottom: 2px; }
+    .dha-text p { font-size: 0.8rem; color: #fee2e2; }
+    .dha-dist {
+      background: #fff;
+      color: #b91c1c;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      padding: 5px 12px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
+    /* Floating 1-Tap Bar on Driver Map */
+    .driver-hazard-quickbar {
+      position: absolute;
+      bottom: 50px;
+      left: 14px;
+      right: 14px;
+      max-width: 520px;
+      margin: 0 auto;
+      z-index: 1000;
+      background: rgba(13, 17, 23, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 18px;
+      padding: 10px 14px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+    .dhq-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .dhq-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .btn-dhq {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 9px 4px;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-dhq:active { transform: scale(0.92); }
+    .btn-dhq-pothole { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.12); }
+    .btn-dhq-borehole { border-color: rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.18); color: #fca5a5; }
+    .btn-dhq-stalled { border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.12); }
+    .btn-dhq-breaker { border-color: rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.12); }
   </style>
 </head>
 
@@ -875,8 +966,46 @@
         <span class="route-display" id="mapRouteDisplay">–</span>
       </div>
 
+      <!-- Live Road Hazard Warning Card Overlay -->
+      <div id="driverHazardAlert" class="driver-hazard-alert">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:1.6rem;" id="dhaIcon">🕳️</div>
+          <div class="dha-text">
+            <h4 id="dhaTitle">सावधान! खुला बोरहोल</h4>
+            <p id="dhaDesc">कृपया गाड़ी धीमी रखें (Slow Down)</p>
+          </div>
+        </div>
+        <div class="dha-dist" id="dhaDist">40m</div>
+      </div>
+
       <!-- Map container -->
       <div id="driverMap"></div>
+
+      <!-- 1-Tap Road Hazard Quick Report Floating Bar -->
+      <div class="driver-hazard-quickbar" id="driverHazardQuickBar">
+        <div class="dhq-header">
+          <span>⚡ Live Road Hazard Report (ड्राइव करते वक्त 1-टैप)</span>
+          <span id="driverHazardCount" style="color:#00f2fe;">0 Hazards Active</span>
+        </div>
+        <div class="dhq-grid">
+          <button class="btn-dhq btn-dhq-pothole" onclick="driverReportHazard('pothole')">
+            <span style="font-size:1.1rem;">🕳️</span>
+            <span>गड्ढा (Pothole)</span>
+          </button>
+          <button class="btn-dhq btn-dhq-borehole" onclick="driverReportHazard('borehole')">
+            <span style="font-size:1.1rem;">⚠️</span>
+            <span>खुला बोरहोल</span>
+          </button>
+          <button class="btn-dhq btn-dhq-stalled" onclick="driverReportHazard('stalled_vehicle')">
+            <span style="font-size:1.1rem;">🚨</span>
+            <span>खराब गाड़ी</span>
+          </button>
+          <button class="btn-dhq btn-dhq-breaker" onclick="driverReportHazard('speed_breaker')">
+            <span style="font-size:1.1rem;">〰️</span>
+            <span>स्पीड ब्रेकर</span>
+          </button>
+        </div>
+      </div>
 
       <!-- Legend -->
       <div class="map-legend">

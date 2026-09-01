@@ -95,23 +95,27 @@ pool.getConnection()
             }
         }
 
-        // Migration 6: road_hazards table (AI Pothole, Breaker, Breakdown Detection)
+        // Migration 6: road_hazards table (Pothole, Borehole, Breaker, Breakdown Detection)
         try {
             await conn.query(`
                 CREATE TABLE IF NOT EXISTS road_hazards (
                     id           INT AUTO_INCREMENT PRIMARY KEY,
-                    hazard_type  ENUM('pothole','speed_breaker','stalled_vehicle','obstacle') NOT NULL,
-                    severity     ENUM('low','medium','high','critical') DEFAULT 'medium',
+                    hazard_type  VARCHAR(50) NOT NULL,
+                    severity     ENUM('low','medium','high','critical') DEFAULT 'high',
                     distance     DECIMAL(5,1) DEFAULT 0,
                     lat          DECIMAL(10,7) DEFAULT NULL,
                     lng          DECIMAL(10,7) DEFAULT NULL,
                     speed        DECIMAL(5,1) DEFAULT 0,
-                    source       VARCHAR(50) DEFAULT 'ai_dashcam',
+                    source       VARCHAR(50) DEFAULT 'user_report',
                     notes        TEXT DEFAULT NULL,
                     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log('✅ Schema migrated: road_hazards table ready');
+            // Ensure hazard_type is VARCHAR(50) if table was already created
+            try {
+                await conn.query('ALTER TABLE road_hazards MODIFY COLUMN hazard_type VARCHAR(50) NOT NULL');
+            } catch (e) {}
+            console.log('✅ Schema migrated: road_hazards table ready (supports borehole & all hazards)');
         } catch (err) {
             if (err.code !== 'ER_TABLE_EXISTS_ERROR') {
                 console.log('Schema migration notice (road_hazards):', err.message);

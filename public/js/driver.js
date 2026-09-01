@@ -399,6 +399,9 @@ function initDriverMap() {
             { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
     }
+
+    // Initialize Road Hazard Safety on Driver Map
+    initDriverHazardSafety(lat, lng);
 }
 
 // ─── Geolocation Tracking ────────────────────────────────────
@@ -422,6 +425,7 @@ function startTracking() {
         if (driverMarker && driverMap) {
             driverMarker.setLatLng([latitude, longitude]);
             driverMap.setView([latitude, longitude]);
+            checkDriverHazardProximity(latitude, longitude);
         }
     }, (error) => {
         console.error('Error watching position:', error);
@@ -505,6 +509,7 @@ function toggleSimulation() {
             if (driverMarker && driverMap) {
                 driverMarker.setLatLng([simulatedLat, simulatedLng]);
                 driverMap.setView([simulatedLat, simulatedLng]);
+                checkDriverHazardProximity(simulatedLat, simulatedLng);
             }
         }, 2000); // Update every 2 seconds
     }
@@ -1254,3 +1259,283 @@ async function submitModalRideUpdate(e) {
     // Trigger update/goLive
     await goLive(e);
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 🛡️ DRIVER LIVE ROAD HAZARD & SAFETY ENGINE (Camera-Free)
+// ═══════════════════════════════════════════════════════════════
+
+let driverHazards = [];
+let driverHazardMarkers = {};
+let lastSpokenHazardTime = 0;
+let lastSpokenHazardKey = '';
+let driverAudioCtx = null;
+
+function initDriverAudio() {
+    if (!driverAudioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) driverAudioCtx = new AudioContext();
+    }
+    if (driverAudioCtx && driverAudioCtx.state === 'suspended') {
+        driverAudioCtx.resume();
+    }
+}
+
+function playDriverBeep(freq = 820) {
+    try {
+        initDriverAudio();
+        if (!driverAudioCtx) return;
+        const osc = driverAudioCtx.createOscillator();
+        const gain = driverAudioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, driverAudioCtx.currentTime);
+        gain.gain.setValueAtTime(0.3, driverAudioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, driverAudioCtx.currentTime + 0.18);
+        osc.connect(gain);
+        gain.connect(driverAudioCtx.destination);
+        osc.start();
+        osc.stop(driverAudioCtx.currentTime + 0.18);
+    } catch (e) {}
+}
+
+function speakDriverWarning(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'hi-IN';
+        utterance.rate = 1.05;
+        window.speechSynthesis.speak(utterance);
+    }
+}
+
+function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c);
+}
+
+// Initialize Hazard Safety Layer on Driver Map
+async function initDriverHazardSafety(lat, lng) {
+    if (!driverMap) return;
+
+    // Listen for live hazard alerts broadcasted by other drivers/passengers
+    socket.off('road-hazard-alert');
+    socket.on('road-hazard-alert', (hazard) => {
+        driverHazards.unshift(hazard);
+        addHazardMarkerToDriverMap(hazard);
+        updateHazardBadge();
+        showToast(`⚠️ Naya Road Hazard Alert: ${hazard.hazard_type.toUpperCase()}`, 'warning');
+    });
+
+    // Listen for Motion Sensor (Auto-bump on sudden jerk)
+    if ('DeviceMotionEvent' in window) {
+        let lastBump = 0;
+        window.addEventListener('devicemotion', (e) => {
+            const acc = e.accelerationIncludingGravity || e.acceleration;
+            if (!acc) return;
+            const z = Math.abs(acc.z || 0);
+            const now = Date.now();
+            if (z > 18.5 && (now - lastBump) > 7000 && driverMarker) {
+                lastBump = now;
+                const pos = driverMarker.getLatLng();
+                showToast(`⚡ Jhatka Detect Hua! Gaddha Auto-Logged (${z.toFixed(1)} m/s²)`, 'warning');
+                fetch('/api/hazards/sensor-bump', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lat: pos.lat, lng: pos.lng, z_force: z.toFixed(1) })
+                }).catch(() => {});
+            }
+        });
+    }
+
+    // Load nearby hazards
+    await loadDriverNearbyHazards(lat, lng);
+}
+
+async function loadDriverNearbyHazards(lat, lng) {
+    try {
+        const cLat = lat || (driverMarker ? driverMarker.getLatLng().lat : 28.6139);
+        const cLng = lng || (driverMarker ? driverMarker.getLatLng().lng : 77.2090);
+
+        const res = await fetch(`/api/hazards/nearby?lat=${cLat}&lng=${cLng}&radiusKm=10`);
+        const data = await res.json();
+        if (data.hazards) {
+            driverHazards = data.hazards;
+            updateHazardBadge();
+            renderDriverHazardMarkers();
+            checkDriverHazardProximity(cLat, cLng);
+        }
+    } catch (e) {
+        console.warn('Error loading driver hazards:', e);
+    }
+}
+
+function updateHazardBadge() {
+    const badge = document.getElementById('driverHazardCount');
+    if (badge) badge.innerText = `${driverHazards.length} Hazards Active`;
+}
+
+function renderDriverHazardMarkers() {
+    if (!driverMap) return;
+    Object.values(driverHazardMarkers).forEach(m => driverMap.removeLayer(m));
+    driverHazardMarkers = {};
+
+    driverHazards.forEach(h => {
+        addHazardMarkerToDriverMap(h);
+    });
+}
+
+function addHazardMarkerToDriverMap(h) {
+    if (!driverMap || !h.lat || !h.lng) return;
+
+    const confMap = {
+        pothole: { emoji: '🕳️', color: '#f59e0b', label: 'गड्ढा' },
+        borehole: { emoji: '⚠️', color: '#ef4444', label: 'खुला बोरहोल' },
+        stalled_vehicle: { emoji: '🚨', color: '#dc2626', label: 'खराब गाड़ी' },
+        speed_breaker: { emoji: '〰️', color: '#3b82f6', label: 'स्पीड ब्रेकर' },
+        obstacle: { emoji: '🚧', color: '#a855f7', label: 'रुकावट' }
+    };
+
+    const conf = confMap[h.hazard_type] || { emoji: '⚠️', color: '#f59e0b', label: 'खतरा' };
+
+    const customIcon = L.divIcon({
+        className: 'driver-hazard-pin',
+        html: `
+            <div style="background:${conf.color};border:2px solid #fff;border-radius:12px;padding:3px 8px;font-size:0.8rem;color:#fff;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,0.6);display:flex;align-items:center;gap:4px;white-space:nowrap;">
+                <span>${conf.emoji}</span> <span>${conf.label}</span>
+            </div>
+        `,
+        iconSize: [80, 26],
+        iconAnchor: [40, 13]
+    });
+
+    const marker = L.marker([parseFloat(h.lat), parseFloat(h.lng)], { icon: customIcon }).addTo(driverMap);
+    marker.bindPopup(`
+        <div style="font-family:sans-serif;font-size:0.85rem;color:#fff;">
+            <b style="color:${conf.color};font-size:0.95rem;">${conf.label.toUpperCase()}</b><br>
+            <p style="margin:4px 0;">${h.notes || 'Road Hazard Report'}</p>
+            <small style="color:#94a3b8;">Source: ${h.source || 'Crowdsourced'}</small>
+        </div>
+    `);
+
+    driverHazardMarkers[h.id || Math.random()] = marker;
+}
+
+// Check proximity while driving (100m, 50m alerts)
+function checkDriverHazardProximity(lat, lng) {
+    if (!driverHazards || driverHazards.length === 0) return;
+
+    let closest = null;
+    let minDistance = 99999;
+
+    driverHazards.forEach(h => {
+        if (h.lat && h.lng) {
+            const dist = calculateDistanceMeters(lat, lng, parseFloat(h.lat), parseFloat(h.lng));
+            h.distance_meters = dist;
+            if (dist < minDistance) {
+                minDistance = dist;
+                closest = h;
+            }
+        }
+    });
+
+    const alertBanner = document.getElementById('driverHazardAlert');
+    const dhaDist = document.getElementById('dhaDist');
+    const dhaTitle = document.getElementById('dhaTitle');
+    const dhaDesc = document.getElementById('dhaDesc');
+    const dhaIcon = document.getElementById('dhaIcon');
+
+    if (closest && minDistance <= 100 && alertBanner) {
+        alertBanner.style.display = 'flex';
+        dhaDist.innerText = `${minDistance}m`;
+
+        const nameMap = {
+            pothole: { title: 'सावधान! आगे गड्ढा है', icon: '🕳️' },
+            borehole: { title: 'सावधान! आगे खुला बोरहोल है', icon: '⚠️' },
+            stalled_vehicle: { title: 'सावधान! खराब गाड़ी खड़ी है', icon: '🚨' },
+            speed_breaker: { title: 'आगे स्पीड ब्रेकर है', icon: '〰️' },
+            obstacle: { title: 'आगे सड़क पर रुकावट है', icon: '🚧' }
+        };
+
+        const hazardInfo = nameMap[closest.hazard_type] || { title: 'सावधान! आगे खतरा है', icon: '⚠️' };
+        dhaIcon.innerText = hazardInfo.icon;
+        dhaTitle.innerText = hazardInfo.title;
+        dhaDesc.innerText = `${closest.notes || 'कृपया गाड़ी धीमी रखें (Slow Down)'}`;
+
+        playDriverBeep(minDistance <= 40 ? 920 : 720);
+
+        // Voice alert (throttled every 5 seconds per hazard)
+        const now = Date.now();
+        const speechKey = `${closest.id || closest.hazard_type}_${Math.floor(minDistance / 25)}`;
+        if (lastSpokenHazardKey !== speechKey && (now - lastSpokenHazardTime) > 5000) {
+            lastSpokenHazardKey = speechKey;
+            lastSpokenHazardTime = now;
+            const text = minDistance <= 30
+                ? `सावधान! तुरंत गाड़ी धीमी करें, ${minDistance} मीटर आगे ${hazardInfo.title.replace('सावधान! आगे ', '')}!`
+                : `आगे ${minDistance} मीटर पर ${hazardInfo.title.replace('सावधान! आगे ', '')} है, ध्यान से चलाएं।`;
+            speakDriverWarning(text);
+        }
+    } else if (alertBanner) {
+        alertBanner.style.display = 'none';
+    }
+}
+
+// 1-Tap Quick Hazard Report by Driver
+window.driverReportHazard = async function (type) {
+    initDriverAudio();
+    playDriverBeep(880);
+
+    if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+
+    let lat = null;
+    let lng = null;
+
+    if (driverMarker) {
+        const pos = driverMarker.getLatLng();
+        lat = pos.lat;
+        lng = pos.lng;
+    } else if (currentRoute) {
+        lat = currentRoute.current_lat;
+        lng = currentRoute.current_lng;
+    }
+
+    const typeLabels = {
+        pothole: 'गड्ढा (Pothole)',
+        borehole: 'खुला बोरहोल (Open Borehole)',
+        stalled_vehicle: 'खराब गाड़ी (Stalled Car)',
+        speed_breaker: 'स्पीड ब्रेकर (Speed Breaker)'
+    };
+
+    const label = typeLabels[type] || type;
+
+    const payload = {
+        hazard_type: type,
+        lat: lat,
+        lng: lng,
+        severity: (type === 'borehole' || type === 'stalled_vehicle') ? 'critical' : 'high',
+        notes: `Driver Report: ${label} at ${new Date().toLocaleTimeString('hi-IN')}`
+    };
+
+    try {
+        const res = await fetch('/api/hazards/quick-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`✅ ${label} ki location save ho gayi!`, 'success');
+            speakDriverWarning(`${label} रिपोर्ट हो गया!`);
+            driverHazards.unshift(data.hazard);
+            addHazardMarkerToDriverMap(data.hazard);
+            updateHazardBadge();
+        }
+    } catch (e) {
+        showToast('⚠️ Hazard report save nahi ho paya', 'error');
+    }
+};
+
