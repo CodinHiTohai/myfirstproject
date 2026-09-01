@@ -95,6 +95,29 @@ pool.getConnection()
             }
         }
 
+        // Migration 6: road_hazards table (AI Pothole, Breaker, Breakdown Detection)
+        try {
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS road_hazards (
+                    id           INT AUTO_INCREMENT PRIMARY KEY,
+                    hazard_type  ENUM('pothole','speed_breaker','stalled_vehicle','obstacle') NOT NULL,
+                    severity     ENUM('low','medium','high','critical') DEFAULT 'medium',
+                    distance     DECIMAL(5,1) DEFAULT 0,
+                    lat          DECIMAL(10,7) DEFAULT NULL,
+                    lng          DECIMAL(10,7) DEFAULT NULL,
+                    speed        DECIMAL(5,1) DEFAULT 0,
+                    source       VARCHAR(50) DEFAULT 'ai_dashcam',
+                    notes        TEXT DEFAULT NULL,
+                    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ Schema migrated: road_hazards table ready');
+        } catch (err) {
+            if (err.code !== 'ER_TABLE_EXISTS_ERROR') {
+                console.log('Schema migration notice (road_hazards):', err.message);
+            }
+        }
+
         conn.release();
     })
     .catch(err => {
@@ -106,17 +129,17 @@ app.set('io', io);
 app.set('db', pool);
 
 // ─── API Routes ──────────────────────────────────────────────────
-const authRoutes    = require('./routes/auth');
-const routeRoutes   = require('./routes/routes');
-const adminRoutes   = require('./routes/admin');
+const authRoutes     = require('./routes/auth');
+const routeRoutes    = require('./routes/routes');
+const adminRoutes    = require('./routes/admin');
 const feedbackRoutes = require('./routes/feedback');
-// OTP routes removed
+const hazardRoutes   = require('./routes/hazards');
 
 app.use('/api/auth',     authRoutes);
 app.use('/api/routes',   routeRoutes);
 app.use('/api/admin',    adminRoutes);
 app.use('/api/feedback', feedbackRoutes);
-// OTP route removed
+app.use('/api/hazards',  hazardRoutes);
 
 // ─── GET /api/user-rides?phone=X ─────────────────────────────────
 // Returns up to 20 most recent rides for a passenger phone number.
