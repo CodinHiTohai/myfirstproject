@@ -734,6 +734,7 @@
       </div>
     </div>
     <div class="dash-nav-right">
+      <button class="nav-action-btn" onclick="openUpdateRideModal()" id="updateRideNavBtn" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35);color:#a78bfa;font-weight:600;">🔄 Update Ride</button>
       <button class="nav-action-btn" onclick="openEarnings()" id="earningsNavBtn">💰 Earnings</button>
       <button class="nav-action-btn" onclick="openDriverHistory()">📜 History</button>
       <button class="nav-action-btn danger" onclick="logout()">🚪 Logout</button>
@@ -1014,6 +1015,46 @@
       <div class="history-list" id="driverHistoryList">
         <div style="text-align:center;padding:24px;color:#334155;">Loading...</div>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ UPDATE RIDE MODAL ══════════════════════════════════════ -->
+  <div class="history-overlay" id="updateRideModal">
+    <div class="history-card" style="max-width:440px;">
+      <div class="history-topbar">
+        <div class="history-title">🔄 Update Active Ride</div>
+        <button class="close-btn" onclick="closeUpdateRideModal()">✕</button>
+      </div>
+      <form id="updateRideModalForm" onsubmit="submitModalRideUpdate(event)" style="padding:18px 20px 22px;">
+        <p style="font-size:0.82rem;color:#94a3b8;margin-bottom:14px;">Aapki live ride ki details yahan se update karein. Passengers ko real-time me new route dikhega.</p>
+
+        <div class="field-grp">
+          <label class="field-lbl">🟢 Start Location</label>
+          <input type="text" class="field-inp" id="mStartLocation" placeholder="e.g. Mithapur" required autocomplete="off">
+        </div>
+        <div class="field-grp">
+          <label class="field-lbl">🔴 Destination</label>
+          <input type="text" class="field-inp" id="mEndLocation" placeholder="e.g. Kota Junction" required autocomplete="off">
+        </div>
+        <div class="field-grp">
+          <label class="field-lbl">🛑 Intermediate Stops (optional)</label>
+          <input type="text" class="field-inp" id="mStopsInput" placeholder="e.g. Talwandi, DCM" autocomplete="off">
+        </div>
+        <div class="form-row">
+          <div class="field-grp" style="margin-bottom:0">
+            <label class="field-lbl">💰 Fare (₹)</label>
+            <input type="number" class="field-inp" id="mFareInput" placeholder="40" min="1" required>
+          </div>
+          <div class="field-grp" style="margin-bottom:0">
+            <label class="field-lbl">💺 Total Seats</label>
+            <input type="number" class="field-inp" id="mSeatsInput" placeholder="3" min="1" max="60" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-go-live" id="mUpdateBtn" style="margin-top:16px;background:linear-gradient(135deg, #6366f1, #8b5cf6);">
+          🚀 Save & Update Live Ride
+        </button>
+      </form>
     </div>
   </div>
 

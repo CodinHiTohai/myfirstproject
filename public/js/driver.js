@@ -1199,3 +1199,58 @@ async function openDriverHistory() {
 function closeDriverHistory() {
     document.getElementById('driverHistoryModal').style.display = 'none';
 }
+
+// ─── Update Ride Modal Handlers ────────────────────────────────
+function openUpdateRideModal() {
+    const modal = document.getElementById('updateRideModal');
+    if (!modal) return;
+
+    // Pre-fill values from current route or main inputs
+    const start = currentRoute?.start_location || document.getElementById('startLocation')?.value || '';
+    const end = currentRoute?.end_location || document.getElementById('endLocation')?.value || '';
+    const stops = currentRoute?.stops || document.getElementById('stopsInput')?.value || '';
+    const fare = currentRoute?.fare || document.getElementById('fareInput')?.value || '';
+    const seats = currentRoute?.total_seats || document.getElementById('seatsInput')?.value || '';
+
+    const mStart = document.getElementById('mStartLocation'); if (mStart) mStart.value = start;
+    const mEnd = document.getElementById('mEndLocation'); if (mEnd) mEnd.value = end;
+    const mStops = document.getElementById('mStopsInput'); if (mStops) mStops.value = stops;
+    const mFare = document.getElementById('mFareInput'); if (mFare) mFare.value = fare;
+    const mSeats = document.getElementById('mSeatsInput'); if (mSeats) mSeats.value = seats;
+
+    modal.classList.add('open');
+    modal.style.display = 'flex';
+}
+
+function closeUpdateRideModal() {
+    const modal = document.getElementById('updateRideModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.style.display = 'none';
+}
+
+async function submitModalRideUpdate(e) {
+    e.preventDefault();
+    const start_location = document.getElementById('mStartLocation').value.trim();
+    const end_location = document.getElementById('mEndLocation').value.trim();
+    const stops = document.getElementById('mStopsInput').value.trim();
+    const fare = document.getElementById('mFareInput').value;
+    const total_seats = document.getElementById('mSeatsInput').value;
+
+    if (!start_location || !end_location || !fare || !total_seats) {
+        showToast('⚠️ Saari fields sahi se bharein!', 'warning');
+        return;
+    }
+
+    // Sync to main form
+    document.getElementById('startLocation').value = start_location;
+    document.getElementById('endLocation').value = end_location;
+    document.getElementById('stopsInput').value = stops;
+    document.getElementById('fareInput').value = fare;
+    document.getElementById('seatsInput').value = total_seats;
+
+    closeUpdateRideModal();
+
+    // Trigger update/goLive
+    await goLive(e);
+}

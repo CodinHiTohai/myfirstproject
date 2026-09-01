@@ -307,11 +307,12 @@ router.post('/', authenticateToken, async (req, res) => {
         if (existingRoutes.length > 0) {
             // Update existing route
             const existingId = existingRoutes[0].id;
+            const parsedSeats = parseInt(total_seats);
             await db.query(
                 `UPDATE routes 
-                 SET start_location = ?, end_location = ?, stops = ?, fare = ?, total_seats = ?, filled_seats = 0, current_lat = COALESCE(?, current_lat), current_lng = COALESCE(?, current_lng)
+                 SET start_location = ?, end_location = ?, stops = ?, fare = ?, total_seats = ?, filled_seats = LEAST(filled_seats, ?), current_lat = COALESCE(?, current_lat), current_lng = COALESCE(?, current_lng)
                  WHERE id = ?`,
-                [start_location, end_location, stops || null, parseFloat(fare), parseInt(total_seats), lat, lng, existingId]
+                [start_location, end_location, stops || null, parseFloat(fare), parsedSeats, parsedSeats, lat, lng, existingId]
             );
 
             // Fetch updated record
