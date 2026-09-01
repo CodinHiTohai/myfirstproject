@@ -116,6 +116,9 @@ function initMap() {
       { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     );
   }
+
+  // Load community road hazards on map
+  loadUserRoadHazards();
 }
 
 // ─── Search Routes API ────────────────────────────────────────
@@ -967,6 +970,69 @@ function renderLiveRideTracker(data) {
 
   tracker.style.display = 'block';
 }
+
+// ─── Real-Time Road Hazard Listener for Passengers/Users ──────
+let userHazardMarkers = {};
+
+async function loadUserRoadHazards() {
+  if (!map) return;
+  try {
+    const res = await fetch('/api/hazards/nearby?radiusKm=25');
+    const data = await res.json();
+    if (data.hazards) {
+      data.hazards.forEach(h => addUserHazardMarker(h));
+    }
+  } catch (e) {
+    console.warn('User hazard load error:', e);
+  }
+}
+
+function addUserHazardMarker(h) {
+  if (!map || !h.lat || !h.lng) return;
+  if (userHazardMarkers[h.id]) return;
+
+  const confMap = {
+    pothole: { emoji: '🕳️', color: '#f59e0b', label: 'गड्ढा' },
+    borehole: { emoji: '⚠️', color: '#ef4444', label: 'खुला बोरहोल' },
+    stalled_vehicle: { emoji: '🚨', color: '#dc2626', label: 'खराब गाड़ी' },
+    speed_breaker: { emoji: '〰️', color: '#3b82f6', label: 'स्पीड ब्रेकर' },
+    obstacle: { emoji: '🚧', color: '#a855f7', label: 'रुकावट' }
+  };
+
+  const conf = confMap[h.hazard_type] || { emoji: '⚠️', color: '#f59e0b', label: 'खतरा' };
+
+  const customIcon = L.divIcon({
+    className: 'user-hazard-pin',
+    html: `
+      <div style="background:${conf.color};border:2px solid #fff;border-radius:10px;padding:2px 6px;font-size:0.75rem;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.5);white-space:nowrap;display:flex;align-items:center;gap:3px;">
+        <span>${conf.emoji}</span> <span>${conf.label}</span>
+      </div>
+    `,
+    iconSize: [75, 24],
+    iconAnchor: [37, 12]
+  });
+
+  const marker = L.marker([parseFloat(h.lat), parseFloat(h.lng)], { icon: customIcon }).addTo(map);
+  marker.bindPopup(`
+    <div style="font-family:sans-serif;font-size:0.82rem;">
+      <b style="color:${conf.color};">${conf.label.toUpperCase()}</b><br>
+      <p style="margin:3px 0;">${h.notes || 'Road Hazard'}</p>
+      <small style="color:#64748b;">Reported by driver community</small>
+    </div>
+  `);
+
+  userHazardMarkers[h.id] = marker;
+}
+
+// Hook socket listener in setupSocketListeners
+const origSetupSocketListeners = setupSocketListeners;
+setupSocketListeners = function() {
+  origSetupSocketListeners();
+  socket.on('road-hazard-alert', (hazard) => {
+    addUserHazardMarker(hazard);
+    showToast(`⚠️ Road Alert: Route par ${hazard.hazard_type.toUpperCase()} report hua hai!`, 'warning');
+  });
+};
 
 function focusActiveDriver() {
   if (!activeRide) return;
