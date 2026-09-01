@@ -6,8 +6,7 @@ const socket = io();
 let map, markers = {};
 let vehiclesData = [];
 let userLat = null, userLng = null;
-let otpVerified = false;
-let otpPhone = '';
+// OTP system removed — direct booking enabled
 let selectedFeedbackType = 'suggestion';
 
 // ─── Vehicle Icons ────────────────────────────────────────────
@@ -272,8 +271,7 @@ function showVehicleDetail(routeId) {
 
   const emptySeats = vehicle.total_seats - vehicle.filled_seats;
   selectedSeats[routeId] = new Set();
-  otpVerified = false;
-  otpPhone = '';
+  // OTP state removed
 
   const seatLayout = generateSeatLayout(vehicle);
   const ratingStars = getStarRating(vehicle.avg_rating, vehicle.total_ratings);
@@ -370,21 +368,8 @@ function showVehicleDetail(routeId) {
           </div>
         </div>
 
-        <!-- OTP Section -->
-        <div class="otp-section-wrap">
-          <button class="otp-send-btn" id="sendOtpBtn-${routeId}" onclick="sendOTP(${routeId})">
-            📱 Verify Phone with OTP
-          </button>
-          <div id="otpSection-${routeId}" style="display:none;">
-            <div class="otp-input-row">
-              <input type="number" id="otpInput-${routeId}" class="otp-input" placeholder="- - - - - -" maxlength="6">
-              <button class="otp-verify-btn" onclick="verifyOTP(${routeId})">Verify ✅</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Submit Button (hidden until OTP verified) -->
-        <button class="booking-submit-btn" onclick="submitRideRequest(${vehicle.id}, ${emptySeats})" id="requestBtn-${vehicle.id}" style="display:none;">
+        <!-- Submit Button (direct booking — no OTP required) -->
+        <button class="booking-submit-btn" onclick="submitRideRequest(${vehicle.id}, ${emptySeats})" id="requestBtn-${vehicle.id}">
           🚗 Send Request to Driver
         </button>
       </div>
@@ -496,81 +481,7 @@ function changeSeats(delta, routeId) {
   el.textContent = val;
 }
 
-// ─── OTP Flow ────────────────────────────────────────────────
-async function sendOTP(routeId) {
-  const phone = document.getElementById('passengerPhone').value.trim();
-  if (!phone || phone.length < 10) {
-    showToast('Valid phone number daalein', 'error');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/otp/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone })
-    });
-    const data = await res.json();
-    if (data.success) {
-      otpPhone = phone;
-      const otpSection = document.getElementById(`otpSection-${routeId}`);
-      const sendBtn = document.getElementById(`sendOtpBtn-${routeId}`);
-      if (otpSection) otpSection.style.display = 'block';
-      if (sendBtn) sendBtn.textContent = '📱 OTP Bheja Gaya ✓';
-      showToast('OTP bheja gaya! Check karo.', 'success');
-      console.log('[Dev] OTP Response:', data);
-    } else {
-      showToast(data.error || 'OTP send nahi hua', 'error');
-    }
-  } catch (err) {
-    console.error('OTP send error:', err);
-    // Fallback: dev mode — skip OTP
-    otpPhone = phone;
-    otpVerified = true;
-    const sendBtn = document.getElementById(`sendOtpBtn-${routeId}`);
-    const requestBtn = document.getElementById(`requestBtn-${routeId}`);
-    if (sendBtn) sendBtn.innerHTML = '✅ Phone Verified (Dev Mode)';
-    if (requestBtn) requestBtn.style.display = 'flex';
-    showToast('Dev mode: OTP skip. Phone verified!', 'info');
-  }
-}
-
-async function verifyOTP(routeId) {
-  const otp = document.getElementById(`otpInput-${routeId}`)?.value?.trim();
-  if (!otp || otp.length < 4) {
-    showToast('OTP daalein', 'error');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/otp/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: otpPhone, otp })
-    });
-    const data = await res.json();
-
-    if (data.verified) {
-      otpVerified = true;
-      const otpSection = document.getElementById(`otpSection-${routeId}`);
-      const requestBtn = document.getElementById(`requestBtn-${routeId}`);
-      if (otpSection) otpSection.innerHTML = '<div style="color:#10b981;font-weight:600;font-size:0.85rem;padding:6px 0;">✅ Phone Verified!</div>';
-      if (requestBtn) requestBtn.style.display = 'flex';
-      showToast('Phone verified! Ab ride request karo.', 'success');
-    } else {
-      showToast('Galat OTP! Dobara try karo.', 'error');
-    }
-  } catch (err) {
-    console.error('OTP verify error:', err);
-    // Dev fallback
-    otpVerified = true;
-    const otpSection = document.getElementById(`otpSection-${routeId}`);
-    const requestBtn = document.getElementById(`requestBtn-${routeId}`);
-    if (otpSection) otpSection.innerHTML = '<div style="color:#10b981;font-weight:600;font-size:0.85rem;padding:6px 0;">✅ Phone Verified (Dev)!</div>';
-    if (requestBtn) requestBtn.style.display = 'flex';
-    showToast('Dev mode: Verified!', 'success');
-  }
-}
+// OTP Flow removed — Direct booking enabled without phone verification
 
 // ─── Submit Ride Request ──────────────────────────────────────
 function submitRideRequest(routeId, maxSeats) {

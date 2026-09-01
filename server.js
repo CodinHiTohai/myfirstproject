@@ -95,25 +95,6 @@ pool.getConnection()
             }
         }
 
-        // Migration 6: otp_verifications table
-        try {
-            await conn.query(`
-                CREATE TABLE IF NOT EXISTS otp_verifications (
-                    id          INT AUTO_INCREMENT PRIMARY KEY,
-                    phone       VARCHAR(15) NOT NULL,
-                    otp         VARCHAR(6) NOT NULL,
-                    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    expires_at  TIMESTAMP,
-                    verified    TINYINT(1) DEFAULT 0
-                )
-            `);
-            console.log('✅ Schema migrated: otp_verifications table ready');
-        } catch (err) {
-            if (err.code !== 'ER_TABLE_EXISTS_ERROR') {
-                console.log('Schema migration notice (otp_verifications):', err.message);
-            }
-        }
-
         conn.release();
     })
     .catch(err => {
@@ -129,13 +110,13 @@ const authRoutes    = require('./routes/auth');
 const routeRoutes   = require('./routes/routes');
 const adminRoutes   = require('./routes/admin');
 const feedbackRoutes = require('./routes/feedback');
-const otpRoutes     = require('./routes/otp');
+// OTP routes removed
 
 app.use('/api/auth',     authRoutes);
 app.use('/api/routes',   routeRoutes);
 app.use('/api/admin',    adminRoutes);
 app.use('/api/feedback', feedbackRoutes);
-app.use('/api/otp',      otpRoutes);
+// OTP route removed
 
 // ─── GET /api/user-rides?phone=X ─────────────────────────────────
 // Returns up to 20 most recent rides for a passenger phone number.

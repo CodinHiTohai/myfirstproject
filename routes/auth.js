@@ -126,8 +126,31 @@ router.post('/admin-login', async (req, res) => {
 });
 
 
-// ─── POST /api/auth/reset-password ───────────────────────────────────────────
-// Called after OTP is verified. Resets driver password.
+// ─── POST /api/auth/check-phone ──────────────────────────────────────────────────────
+// Checks if a driver with the given phone exists. Used by forgot-password flow.
+// Body: { phone }
+router.post('/check-phone', async (req, res) => {
+    const { phone } = req.body;
+    const db = req.app.get('db');
+
+    if (!phone || !/^\d{10}$/.test(phone)) {
+        return res.status(400).json({ error: 'Valid 10-digit phone number daalo.' });
+    }
+
+    try {
+        const [drivers] = await db.query('SELECT id FROM drivers WHERE phone = ?', [phone]);
+        if (drivers.length === 0) {
+            return res.status(404).json({ exists: false, error: 'Is phone number se koi driver registered nahi hai.' });
+        }
+        res.json({ exists: true });
+    } catch (error) {
+        console.error('Check phone error:', error);
+        res.status(500).json({ error: 'Database error.' });
+    }
+});
+
+// ─── POST /api/auth/reset-password ─────────────────────────────────────────────────
+// Direct password reset (OTP removed).
 router.post('/reset-password', async (req, res) => {
     const { phone, newPassword } = req.body;
     const db = req.app.get('db');
@@ -140,19 +163,6 @@ router.post('/reset-password', async (req, res) => {
     }
 
     try {
-        // Check OTP was verified for this phone (within last 10 minutes)
-        const [otpRows] = await db.query(
-            `SELECT * FROM otp_verifications
-             WHERE phone = ? AND verified = 1
-               AND created_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
-             ORDER BY created_at DESC LIMIT 1`,
-            [phone]
-        );
-
-        if (otpRows.length === 0) {
-            return res.status(401).json({ error: 'OTP verify nahi hua. Pehle OTP verify karo.' });
-        }
-
         // Check driver exists
         const [drivers] = await db.query('SELECT * FROM drivers WHERE phone = ?', [phone]);
         if (drivers.length === 0) {
@@ -163,12 +173,6 @@ router.post('/reset-password', async (req, res) => {
         const hashed = bcrypt.hashSync(newPassword, 10);
         await db.query('UPDATE drivers SET password = ? WHERE phone = ?', [hashed, phone]);
 
-        // Invalidate the OTP
-        await db.query(
-            'UPDATE otp_verifications SET verified = 2 WHERE phone = ? AND verified = 1',
-            [phone]
-        );
-
         res.json({ success: true, message: 'Password successfully reset kar diya gaya.' });
     } catch (error) {
         console.error('Reset password error:', error);
@@ -177,4 +181,3 @@ router.post('/reset-password', async (req, res) => {
 });
 
 module.exports = router;
-
