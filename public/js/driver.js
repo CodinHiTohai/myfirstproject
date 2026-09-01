@@ -531,11 +531,15 @@ async function respondToRide(accepted) {
             routeId: currentRoute.id,
             driverName: driverData.name,
             vehicleNumber: driverData.vehicle_number,
+            vehicleType: driverData.vehicle_type || 'auto',
+            driverPhone: driverData.phone || '',
             driverId: currentRoute.driver_id,
             passengerName: currentRequest.name,
             passengerPhone: currentRequest.phone,
             passengers: currentRequest.passengers || 1,
-            seats: currentRequest.seats || 1
+            seats: currentRequest.seats || 1,
+            lat: currentRoute.current_lat || 25.18,
+            lng: currentRoute.current_lng || 75.85
         });
 
         try {

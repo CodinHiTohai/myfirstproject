@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const socket = io();
+window.socket = socket;
 let map, markers = {};
 let vehiclesData = [];
 let userLat = null, userLng = null;
@@ -876,11 +877,24 @@ function setupSocketListeners() {
       if (step < steps) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
+
+    // If this is user's active ride, keep marker updated
+    if (activeRide && activeRide.routeId === data.routeId) {
+      activeRide.lat = data.lat;
+      activeRide.lng = data.lng;
+    }
   });
 
   socket.on('ride-accepted', async (data) => {
-    showToast(`✅ Ride Accepted by ${data.driverName || 'Driver'}! They are on the way.`, 'success');
+    showToast(`✅ Ride Accepted by ${data.driverName || 'Driver'}! Live map tracking activated.`, 'success');
 
+    // 1. Close the booking modal immediately so it does not block the screen
+    closeModal();
+
+    // 2. Switch to Map tab on mobile
+    showTab('map');
+
+    // 3. Save to ride history in background
     try {
       const historyRes = await fetch('/api/routes/ride-history', {
         method: 'POST',
@@ -900,32 +914,11 @@ function setupSocketListeners() {
       console.error('Failed to save ride history:', e);
     }
 
-    const wrapper = document.getElementById(`requestFormWrapper-${data.routeId}`);
-    if (wrapper) {
-      wrapper.innerHTML = `
-        <div style="padding:20px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:14px;text-align:center;">
-          <div style="font-size:2rem;margin-bottom:8px;">✅</div>
-          <h4 style="color:#10b981;margin-bottom:6px;font-family:'Outfit',sans-serif;">Ride Confirmed!</h4>
-          <p style="font-size:0.85rem;color:#64748b;margin-bottom:16px;">Driver aa raha hai! Map pe live location dekho.</p>
-          <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:16px;margin-top:8px;">
-            <button class="booking-submit-btn" style="background:linear-gradient(135deg,#f59e0b,#d97706);margin-bottom:10px;" onclick="document.getElementById('ratingSection-${data.routeId}').style.display='block';this.style.display='none';">
-              ⭐ Rate Driver (Safar ke baad)
-            </button>
-            <div id="ratingSection-${data.routeId}" style="display:none;">
-              <p style="font-size:0.85rem;font-weight:600;margin-bottom:10px;">⭐ Driver ko rate karo:</p>
-              <div id="ratingStars" style="display:flex;gap:10px;justify-content:center;margin-bottom:12px;">
-                ${[1,2,3,4,5].map(i => `<span class="rate-star" data-value="${i}" onclick="selectRating(${i})" style="font-size:2rem;cursor:pointer;transition:transform 0.2s;">☆</span>`).join('')}
-              </div>
-              <div class="booking-input-wrap">
-                <span class="booking-input-icon">💬</span>
-                <input type="text" id="ratingComment" class="booking-input" placeholder="Comment likhein (optional)">
-              </div>
-              <button class="booking-submit-btn" onclick="submitRating()">⭐ Rating Submit Karo</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }
+    // 4. Render Live Ride Tracker floating panel on the Map
+    renderLiveRideTracker(data);
+
+    // 5. Center map on moving driver marker
+    focusActiveDriver();
   });
 
   socket.on('ride-rejected', (data) => {
@@ -936,6 +929,54 @@ function setupSocketListeners() {
       btn.disabled = false;
     }
   });
+}
+
+// ─── Active Ride Live Tracker ─────────────────────────────────
+let activeRide = null;
+
+function renderLiveRideTracker(data) {
+  activeRide = data;
+  const tracker = document.getElementById('liveRideTracker');
+  if (!tracker) return;
+
+  const driverName = data.driverName || 'Driver';
+  const vehicleNo = data.vehicleNumber || 'Vehicle';
+  const seats = data.seats || 1;
+  const phone = data.driverPhone || data.phone || '';
+  const vehicleType = (data.vehicleType || 'auto').toLowerCase();
+
+  const iconMap = { auto: '🛺', bus: '🚌', car: '🚗' };
+  const avatar = document.getElementById('trackerAvatar');
+  if (avatar) avatar.textContent = iconMap[vehicleType] || '🚗';
+
+  const nameEl = document.getElementById('trackerDriverName');
+  if (nameEl) nameEl.textContent = driverName;
+
+  const subEl = document.getElementById('trackerSubtext');
+  if (subEl) subEl.textContent = `${vehicleNo} • ${seats} Seat(s) Confirmed`;
+
+  const callBtn = document.getElementById('trackerCallBtn');
+  if (callBtn) {
+    if (phone) {
+      callBtn.href = `tel:${phone}`;
+      callBtn.style.display = 'flex';
+    } else {
+      callBtn.style.display = 'none';
+    }
+  }
+
+  tracker.style.display = 'block';
+}
+
+function focusActiveDriver() {
+  if (!activeRide) return;
+  const marker = markers[activeRide.routeId];
+  if (marker && map) {
+    map.flyTo(marker.getLatLng(), 16, { animate: true, duration: 1.2 });
+    marker.openPopup();
+  } else if (activeRide.lat && activeRide.lng && map) {
+    map.flyTo([activeRide.lat, activeRide.lng], 16, { animate: true, duration: 1.2 });
+  }
 }
 
 // ─── Feedback Functions ───────────────────────────────────────

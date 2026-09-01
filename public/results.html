@@ -577,6 +577,133 @@
       .modal-overlay { align-items: flex-end; padding: 0; }
       .counters-row { grid-template-columns: 1fr 1fr; gap: 8px; }
     }
+
+    /* ── Live Ride Active Tracker Card on Map ── */
+    .map-panel { position: relative; }
+    .live-tracker-panel {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      width: calc(100% - 32px);
+      max-width: 440px;
+      background: rgba(17, 24, 39, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 18px;
+      padding: 16px 18px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(16, 185, 129, 0.2);
+      animation: trackerSlideUp 0.4s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+      display: none;
+    }
+    @keyframes trackerSlideUp {
+      from { opacity: 0; transform: translate(-50%, 30px) scale(0.96); }
+      to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    }
+    .tracker-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 10px;
+    }
+    .tracker-live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 50px;
+      padding: 4px 10px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #34d399;
+      letter-spacing: 0.4px;
+    }
+    .tracker-live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      animation: trackerPulse 1.2s infinite;
+    }
+    @keyframes trackerPulse {
+      0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(16,185,129,0.7); }
+      50% { transform: scale(1.3); opacity: 0.8; box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+    }
+    .tracker-content {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .tracker-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    .tracker-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .tracker-driver-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 2px;
+    }
+    .tracker-subtext {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+    .tracker-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .tracker-btn {
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: none;
+      font-family: 'Inter', sans-serif;
+    }
+    .tracker-btn-call {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    .tracker-btn-call:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+    }
+    .tracker-btn-locate {
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a78bfa;
+    }
+    .tracker-btn-locate:hover {
+      background: rgba(99, 102, 241, 0.25);
+      color: #c4b5fd;
+    }
   </style>
 </head>
 
@@ -641,6 +768,28 @@
     <!-- Right: Map -->
     <div class="map-panel" id="mapPanel">
       <div id="map"></div>
+
+      <!-- Live Active Ride Tracking Floating Panel on Map -->
+      <div id="liveRideTracker" class="live-tracker-panel">
+        <div class="tracker-top">
+          <div class="tracker-live-pill">
+            <span class="tracker-live-dot"></span>
+            <span>RIDE CONFIRMED • DRIVER EN ROUTE</span>
+          </div>
+          <button class="modal-close-btn" style="position:static;width:24px;height:24px;font-size:0.75rem;display:flex;align-items:center;justify-content:center;" onclick="document.getElementById('liveRideTracker').style.display='none'" title="Hide">✕</button>
+        </div>
+        <div class="tracker-content">
+          <div class="tracker-avatar" id="trackerAvatar">🚗</div>
+          <div class="tracker-info">
+            <div class="tracker-driver-name" id="trackerDriverName">Driver</div>
+            <div class="tracker-subtext" id="trackerSubtext">Vehicle • Confirmed</div>
+          </div>
+        </div>
+        <div class="tracker-actions">
+          <a id="trackerCallBtn" href="#" class="tracker-btn tracker-btn-call">📞 Call Driver</a>
+          <button class="tracker-btn tracker-btn-locate" onclick="focusActiveDriver()">🎯 Center Map</button>
+        </div>
+      </div>
     </div>
   </div>
 
